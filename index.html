@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
+<title>Buteyko Practice</title>
+<meta name="description" content="A simple Buteyko breathing practice timer: Control Pause, Maximum Pause and combined holds, with history synced to your own Google Drive.">
+<meta name="theme-color" content="#2E6E72">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Buteyko">
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&family=Young+Serif&display=swap">
+<style>
+/* Layout: one calm column; a single big round button carries every hold. */
+:root{
+  --bg:#EDF2F3; --surface:#FFFFFF; --ink:#1B2A2F; --muted:#5A6D73; --line:#D2DCDF;
+  --cp:#2E6E72; --cp-soft:#D9EAEA; --mp:#585DA6; --mp-soft:#E1E2F3; --warn:#9A4B3C;
+  --on-accent:#FFFFFF;
+  --f-display:"Young Serif", Georgia, "Times New Roman", serif;
+  --f-body:"Lexend", "Segoe UI", system-ui, sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --on-accent:#0E181B;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --on-accent:#0E181B;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-weight:400}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+header.top{border-bottom:1px solid var(--line);background:var(--surface)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:400;font-size:1.5rem;margin:0;letter-spacing:.01em}
+h1 span{color:var(--cp)}
+h2{font-family:var(--f-display);font-weight:400;font-size:1.6rem;margin:0;text-wrap:balance}
+h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:0}
+nav{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:999px}
+nav button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.9rem;padding:6px 16px;border-radius:999px;cursor:pointer}
+nav button[aria-current="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+main{padding-block:28px 64px}
+section{display:flex;flex-direction:column;gap:22px}
+.lead{color:var(--muted);margin:-12px 0 0}
+button{font-family:inherit}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--cp);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chipbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:.92rem}
+.chipbtn:hover{border-color:var(--cp)}
+.add-cp{border-color:var(--cp);color:var(--cp)}
+.add-mp{border-color:var(--mp);color:var(--mp)}
+.add-cpmp{border-color:var(--cp);color:var(--ink);background:linear-gradient(90deg,var(--cp-soft),var(--mp-soft))}
+.seq{display:flex;flex-wrap:wrap;gap:8px;min-height:48px;align-items:center}
+.seq .empty{color:var(--muted);font-size:.92rem}
+.hold{display:inline-flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-radius:10px;font-size:.92rem;font-weight:500}
+.hold.CP{background:var(--cp-soft);color:var(--cp)}
+.hold.MP{background:var(--mp-soft);color:var(--mp)}
+.hold.CPMP{background:linear-gradient(90deg,var(--cp-soft) 50%,var(--mp-soft) 50%);color:var(--ink)}
+.hold .n{font-variant-numeric:tabular-nums;opacity:.7;font-weight:400}
+.hold button{border:0;background:transparent;color:inherit;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:1rem;line-height:1}
+.hold button:hover{background:rgba(0,0,0,.08)}
+label.field{display:flex;flex-direction:column;gap:6px;font-size:.88rem;color:var(--muted)}
+select,input[type=number],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+textarea{min-height:70px;resize:vertical}
+.check{display:flex;gap:8px;align-items:center;font-size:.92rem}
+.primary{background:var(--cp);color:var(--on-accent);border:0;border-radius:999px;padding:14px 28px;font-size:1.05rem;font-weight:500;cursor:pointer;align-self:flex-start}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 16px;cursor:pointer;font-size:.9rem}
+.ghost.danger{color:var(--warn);border-color:var(--warn)}
+.key{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.key div{font-size:.88rem;color:var(--muted);min-width:0}
+.key b{display:block;color:var(--ink);font-weight:500;margin-bottom:2px}
+
+/* Run view */
+#v-run{align-items:center;text-align:center;gap:16px}
+.runhead{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.dot{min-width:34px;height:8px;border-radius:4px;background:var(--line)}
+.dot.CP.done,.dot.CP.now{background:var(--cp)}
+.dot.MP.done,.dot.MP.now{background:var(--mp)}
+.dot.CPMP.done,.dot.CPMP.now{background:linear-gradient(90deg,var(--cp) 50%,var(--mp) 50%)}
+.dot.now{opacity:.5}
+.typename{font-family:var(--f-display);font-size:1.7rem}
+.typename.CP{color:var(--cp)} .typename.MP{color:var(--mp)}
+.instr{color:var(--muted);max-width:44ch;margin:0;min-height:3em}
+.timer{font-size:clamp(4.5rem,18vw,7.5rem);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.timer small{font-size:.25em;color:var(--muted);font-weight:400;margin-left:4px;letter-spacing:0}
+.timer.rest{color:var(--muted)}
+.marked{font-size:.95rem;color:var(--cp);font-weight:500;min-height:1.5em}
+.scale{width:100%;max-width:560px}
+.scale text{font-size:11px;fill:var(--muted);font-family:var(--f-body)}
+.big{width:200px;height:200px;border-radius:50%;border:0;background:var(--cp);color:var(--on-accent);font-size:1.25rem;font-weight:500;cursor:pointer;padding:16px;line-height:1.25;transition:transform .15s ease, background .3s ease}
+.big:active{transform:scale(.97)}
+.big.mp{background:var(--mp)}
+.big.rest{background:var(--surface);color:var(--ink);border:2px solid var(--line)}
+.big.holding{animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--cp) 35%,transparent)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--cp) 0%,transparent)}}
+.big.mp.holding{animation-name:breathe-mp}
+@keyframes breathe-mp{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--mp) 35%,transparent)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--mp) 0%,transparent)}}
+@media (prefers-reduced-motion: reduce){.big.holding{animation:none}.big{transition:none}}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.minor{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* Results table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:.92rem}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:500}
+td.num,th.num{text-align:right}
+.cpv{color:var(--cp);font-weight:500}.mpv{color:var(--mp);font-weight:500}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem;color:var(--warn)}
+
+/* History */
+.chart{width:100%;height:auto}
+.chart text{font-size:11px;fill:var(--muted);font-family:var(--f-body)}
+.legend{display:flex;gap:16px;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.sess{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sess:last-child{border-bottom:0}
+.sess .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.sess .date{font-weight:500}
+.sess .meta{font-size:.85rem;color:var(--muted)}
+.sess .holds{display:flex;gap:6px;flex-wrap:wrap}
+.sess .holds span{font-size:.82rem;padding:2px 8px;border-radius:6px;background:var(--bg);font-variant-numeric:tabular-nums}
+.sess .note{font-size:.88rem;color:var(--muted);font-style:italic}
+.sess .acts{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.sess.editing{background:var(--bg);border-radius:var(--r);padding:16px;gap:12px;border-bottom:0;margin-block:6px}
+.edtable td{padding:6px}
+.edtable input,.edtable select{width:5.5em;padding:6px 8px;background:var(--surface)}
+.edtable input:disabled{opacity:.35}
+.sess.editing input,.sess.editing textarea{background:var(--surface)}
+.err{color:var(--warn);margin:0;font-size:.9rem}
+.backupinfo{margin:0;font-size:.9rem}
+.backupinfo.warn{color:var(--warn)}
+.filebtn{cursor:pointer;position:relative;display:inline-flex;align-items:center}
+.filebtn input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.filebtn:focus-within{outline:3px solid var(--cp);outline-offset:2px}
+.choice{background:var(--bg);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.choice p{margin:0}
+header.top h1{margin-right:auto}
+.syncchip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:.82rem;cursor:pointer}
+.syncchip .sdot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.syncchip.ok .sdot{background:var(--cp)}
+.syncchip.warn .sdot{background:#C9962B}
+.syncchip.bad .sdot{background:var(--warn)}
+.syncchip.busy .sdot{background:var(--mp);animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+a.ghost{text-decoration:none;display:inline-flex;align-items:center}
+.foot{padding-block:0 32px;font-size:.82rem}
+.foot a{color:var(--muted)}
+.linkbtn{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.82rem;padding:0}
+.emptystate{color:var(--muted);text-align:center;padding:24px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:.9rem}
+</style>
+
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <h1>Buteyko <span>Practice</span></h1>
+  <button class="syncchip" id="syncChip" hidden><span class="sdot"></span><span id="syncText">Sync</span></button>
+  <nav aria-label="Views">
+    <button id="nav-setup" aria-current="true">Session</button>
+    <button id="nav-history" aria-current="false">History</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+<!-- SETUP -->
+<section id="v-setup">
+  <h2>Plan this session</h2>
+  <p class="lead">Pick a preset or build the order of holds yourself.</p>
+
+  <div class="panel">
+    <h3>Presets</h3>
+    <div class="row" id="presets"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Your holds, in order</h3>
+    <div class="seq" id="seq"></div>
+    <div class="row">
+      <button class="chipbtn add-cp" data-add="CP">+ Control Pause</button>
+      <button class="chipbtn add-mp" data-add="MP">+ Maximum Pause</button>
+      <button class="chipbtn add-cpmp" data-add="CPMP">+ CP then MP</button>
+      <button class="linkbtn" id="clearSeq">Clear</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Between holds</h3>
+    <div class="grid2">
+      <label class="field">Rest time
+        <select id="rest">
+          <option value="0">No timer, I'll press Next</option>
+          <option value="30">30 seconds</option>
+          <option value="60">1 minute</option>
+          <option value="90">1 minute 30</option>
+          <option value="120">2 minutes</option>
+          <option value="180">3 minutes</option>
+          <option value="300">5 minutes</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="sound" checked> Soft chimes</label>
+    </div>
+  </div>
+
+  <button class="primary" id="startSession">Start session</button>
+
+  <div class="key">
+    <div><b>Control Pause (CP)</b>After a normal out-breath, hold until the first definite urge to breathe.</div>
+    <div><b>Maximum Pause (MP)</b>Hold past the first urge to a moderate, comfortable limit.</div>
+    <div><b>CP then MP</b>One hold. Tap at the first urge to log the CP, the timer keeps going, tap again to finish the MP.</div>
+  </div>
+</section>
+
+<!-- RUN -->
+<section id="v-run" hidden>
+  <div class="runhead">
+    <span class="hint" id="stepLabel">Hold 1 of 3</span>
+    <button class="ghost" id="endEarly">End session</button>
+  </div>
+  <div class="dots" id="dots"></div>
+  <div class="typename" id="typeName">Control Pause</div>
+  <p class="instr" id="instr"></p>
+  <div class="timer" id="timer">0<small>s</small></div>
+  <div class="marked" id="marked"></div>
+  <svg class="scale" id="scale" viewBox="0 0 560 46" role="img" aria-label="Hold time scale"></svg>
+  <button class="big" id="big">Start</button>
+  <p class="hint" id="keyhint">Space bar works too. Esc cancels a hold.</p>
+  <div class="minor">
+    <button class="ghost" id="cancelHold" hidden>Cancel this hold</button>
+    <button class="ghost" id="redoLast" hidden>Redo last hold</button>
+  </div>
+</section>
+
+<!-- DONE -->
+<section id="v-done" hidden>
+  <h2>Session complete</h2>
+  <div class="panel">
+    <div class="tablewrap"><table id="doneTable"></table></div>
+  </div>
+  <div class="panel">
+    <h3>Optional</h3>
+    <div class="grid2">
+      <label class="field">Pulse at start (bpm)<input type="number" id="pulseStart" min="30" max="200" inputmode="numeric"></label>
+      <label class="field">Pulse at end (bpm)<input type="number" id="pulseEnd" min="30" max="200" inputmode="numeric"></label>
+    </div>
+    <label class="field">Notes<textarea id="notes" placeholder="How did it feel? Nose clear? Any wheeze?"></textarea></label>
+  </div>
+  <div class="row">
+    <button class="primary" id="saveSession">Save to history</button>
+    <span id="discardWrap"><button class="ghost danger" id="discard">Discard</button></span>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section id="v-history" hidden>
+  <h2>History</h2>
+  <div class="panel" id="chartPanel">
+    <h3>Progress by session</h3>
+    <div id="chartWrap"></div>
+    <div class="legend"><span><i style="background:var(--cp)"></i>Average CP</span><span><i style="background:var(--mp)"></i>Best MP</span></div>
+  </div>
+  <div class="panel">
+    <h3>Sessions</h3>
+    <div id="sessList"></div>
+  </div>
+  <div class="panel" id="drivePanel">
+    <h3>Google Drive sync</h3>
+    <div id="driveBody"></div>
+  </div>
+  <div class="panel">
+    <h3>Backup and restore</h3>
+    <p class="hint" style="margin:0">History lives in this browser on this computer. Save a backup file before switching to a new version of the app, then restore it in the new one.</p>
+    <p class="backupinfo" id="backupInfo"></p>
+    <div class="row">
+      <button class="primary" id="dlJson" style="padding:10px 20px;font-size:.95rem">Save backup file</button>
+      <label class="ghost filebtn">Restore from backup file<input type="file" id="importJson" accept=".json,application/json"></label>
+    </div>
+    <div id="importChoice" hidden></div>
+    <h3 style="margin-top:6px">For spreadsheets</h3>
+    <div class="row">
+      <button class="ghost" id="dlCsv">Download CSV</button>
+      <button class="ghost" id="copyCsv">Copy CSV</button>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="wrap foot"><a href="privacy.html">Privacy</a></footer>
+
+<script>
+(function(){
+const NAMES={CP:"Control Pause",MP:"Maximum Pause",CPMP:"CP then MP"};
+const SHORT={CP:"CP",MP:"MP",CPMP:"CP+MP"};
+const PRESETS=[
+  {label:"3 x CP",seq:["CP","CP","CP"]},
+  {label:"3 x CP then MP",seq:["CPMP","CPMP","CPMP"]},
+  {label:"CP, CP, MP",seq:["CP","CP","MP"]},
+  {label:"CP then MP once",seq:["CPMP"]},
+  {label:"4 x CP",seq:["CP","CP","CP","CP"]}
+];
+const LS_LOG="buteyko-log-v1", LS_SET="buteyko-settings-v1";
+const $=id=>document.getElementById(id);
+
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+
+let settings=Object.assign({seq:["CPMP","CPMP","CPMP"],rest:60,sound:true},load(LS_SET,{}));
+let store=load(LS_LOG,[]);
+if(!Array.isArray(store))store=[];
+let log=[];
+const ts=s=>s.updatedAt||s.edited||s.date;
+const byDate=(a,b)=>a.date<b.date?-1:(a.date>b.date?1:0);
+function refreshLog(){store.sort(byDate);log=store.filter(s=>!s.deleted)}
+refreshLog();
+function upsert(s){s.updatedAt=new Date().toISOString();const i=store.findIndex(x=>x.id===s.id);if(i>=0)store[i]=s;else store.push(s)}
+function tombstone(id){upsert({id,date:(store.find(x=>x.id===id)||{}).date||new Date().toISOString(),results:[],deleted:true})}
+function mergeSets(a,b){
+  const m=new Map();
+  [...a,...b].forEach(s=>{if(!s||!s.id)return;const c=m.get(s.id);if(!c||ts(s)>ts(c))m.set(s.id,s)});
+  return [...m.values()].sort(byDate);
+}
+function commit(gesture){
+  refreshLog();const ok=save(LS_LOG,store);
+  if(window.Sync)Sync.changed(gesture);
+  return ok;
+}
+
+/* ---------- Sound ---------- */
+let actx=null;
+function tone(freqs,dur=0.9){
+  if(!settings.sound)return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==="suspended")actx.resume();
+    freqs.forEach((f,i)=>{
+      const t=actx.currentTime+i*0.28;
+      const o=actx.createOscillator(),g=actx.createGain();
+      o.type="sine";o.frequency.value=f;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur+0.05);
+    });
+  }catch(e){}
+}
+const SND={start:()=>tone([523]),mark:()=>tone([659]),stop:()=>tone([440,392]),restEnd:()=>tone([523,659],1.1)};
+
+/* ---------- Wake lock ---------- */
+let wake=null;
+async function keepAwake(on){
+  try{
+    if(on&&"wakeLock" in navigator&&!wake){wake=await navigator.wakeLock.request("screen");wake.addEventListener("release",()=>wake=null)}
+    if(!on&&wake){await wake.release();wake=null}
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&run)keepAwake(true)});
+
+/* ---------- Views ---------- */
+function show(v){
+  ["setup","run","done","history"].forEach(n=>$("v-"+n).hidden=(n!==v));
+  $("nav-setup").setAttribute("aria-current",String(v!=="history"));
+  $("nav-history").setAttribute("aria-current",String(v==="history"));
+  if(v==="history")renderHistory();
+  window.scrollTo(0,0);
+}
+$("nav-setup").onclick=()=>show(run?"run":(pending?"done":"setup"));
+$("nav-history").onclick=()=>show("history");
+
+/* ---------- Setup ---------- */
+PRESETS.forEach(p=>{
+  const b=document.createElement("button");b.className="chipbtn";b.textContent=p.label;
+  b.onclick=()=>{settings.seq=p.seq.slice();persist();renderSeq()};
+  $("presets").appendChild(b);
+});
+document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{
+  if(settings.seq.length>=12)return;
+  settings.seq.push(b.dataset.add);persist();renderSeq();
+});
+$("clearSeq").onclick=()=>{settings.seq=[];persist();renderSeq()};
+$("rest").value=String(settings.rest);
+$("rest").onchange=e=>{settings.rest=+e.target.value;persist()};
+$("sound").checked=settings.sound;
+$("sound").onchange=e=>{settings.sound=e.target.checked;persist()};
+function persist(){save(LS_SET,settings)}
+function renderSeq(){
+  const el=$("seq");el.innerHTML="";
+  if(!settings.seq.length){el.innerHTML='<span class="empty">No holds yet. Add one below or pick a preset.</span>'}
+  settings.seq.forEach((t,i)=>{
+    const s=document.createElement("span");s.className="hold "+t;
+    s.innerHTML='<span class="n">'+(i+1)+'</span>'+SHORT[t];
+    const x=document.createElement("button");x.setAttribute("aria-label","Remove hold "+(i+1));x.textContent="×";
+    x.onclick=()=>{settings.seq.splice(i,1);persist();renderSeq()};
+    s.appendChild(x);el.appendChild(s);
+  });
+  $("startSession").disabled=!settings.seq.length;
+}
+renderSeq();
+
+/* ---------- Run ---------- */
+let run=null, pending=null, raf=0, restTimer=0;
+$("startSession").onclick=()=>{
+  if(!settings.seq.length)return;
+  run={seq:settings.seq.slice(),idx:0,phase:"ready",t0:0,cp:null,results:[],restEnd:0,started:new Date().toISOString()};
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
+  keepAwake(true);show("run");renderRun();
+};
+
+function elapsed(){return (performance.now()-run.t0)/1000}
+function fmt(s){return s==null?"-":String(Math.round(s))}
+
+function primary(){
+  if(!run)return;
+  const type=run.seq[run.idx];
+  if(run.phase==="ready"){
+    run.t0=performance.now();run.cp=null;run.phase="holding";SND.start();loop();
+  }else if(run.phase==="holding"){
+    const e=elapsed();
+    if(type==="CP"){finishHold({type,cp:e,mp:null})}
+    else if(type==="MP"){finishHold({type,cp:null,mp:e})}
+    else{run.cp=e;run.phase="holdingMP";SND.mark()}
+  }else if(run.phase==="holdingMP"){
+    finishHold({type,cp:run.cp,mp:elapsed()});
+  }else if(run.phase==="rest"){
+    endRest(false);
+  }
+  renderRun();
+}
+function finishHold(r){
+  cancelAnimationFrame(raf);
+  r.cp=r.cp==null?null:Math.round(r.cp*10)/10;
+  r.mp=r.mp==null?null:Math.round(r.mp*10)/10;
+  run.results.push(r);run.idx++;SND.stop();
+  if(run.idx>=run.seq.length){finishSession();return}
+  if(settings.rest>0){
+    run.phase="rest";run.restEnd=performance.now()+settings.rest*1000;
+    restTick();
+  }else run.phase="ready";
+}
+function restTick(){
+  clearTimeout(restTimer);
+  if(!run||run.phase!=="rest")return;
+  const left=(run.restEnd-performance.now())/1000;
+  if(left<=0){endRest(true);return}
+  $("timer").innerHTML=Math.ceil(left)+"<small>s</small>";
+  restTimer=setTimeout(restTick,200);
+}
+function endRest(chime){
+  clearTimeout(restTimer);
+  if(!run)return;
+  run.phase="ready";if(chime)SND.restEnd();renderRun();
+}
+function cancelHold(){
+  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"))return;
+  cancelAnimationFrame(raf);run.phase="ready";run.cp=null;renderRun();
+}
+function redoLast(){
+  if(!run||!run.results.length||run.phase==="holding"||run.phase==="holdingMP")return;
+  clearTimeout(restTimer);run.results.pop();run.idx--;run.phase="ready";renderRun();
+}
+function loop(){
+  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"))return;
+  const e=elapsed();
+  $("timer").innerHTML=Math.floor(e)+"<small>s</small>";
+  drawScale(e,run.cp);
+  raf=requestAnimationFrame(loop);
+}
+
+function renderRun(){
+  if(!run)return;
+  const n=run.seq.length, type=run.seq[Math.min(run.idx,n-1)];
+  $("stepLabel").textContent=run.phase==="rest"?("Rest before hold "+(run.idx+1)+" of "+n):("Hold "+(run.idx+1)+" of "+n);
+  const dots=$("dots");dots.innerHTML="";
+  run.seq.forEach((t,i)=>{const d=document.createElement("span");d.className="dot "+t+(i<run.idx?" done":"")+(i===run.idx&&run.phase!=="rest"?" now":"");d.title=NAMES[t];dots.appendChild(d)});
+  const tn=$("typeName"), big=$("big"), ins=$("instr"), mk=$("marked"), tm=$("timer");
+  tn.className="typename "+(type==="MP"?"MP":"CP");
+  tn.textContent=run.phase==="rest"?"Rest":NAMES[type];
+  big.className="big";tm.className="timer";
+  $("cancelHold").hidden=!(run.phase==="holding"||run.phase==="holdingMP");
+  $("redoLast").hidden=!(run.results.length&&(run.phase==="ready"||run.phase==="rest"));
+  const last=run.results[run.results.length-1];
+  if(run.phase==="ready"){
+    tm.innerHTML="0<small>s</small>";
+    ins.textContent="Sit tall and relaxed. Breathe out normally, pinch your nose, then press Start.";
+    big.textContent="Start";if(type==="MP")big.classList.add("mp");
+    mk.textContent=last?("Last hold: "+resultText(last)):"";
+    drawScale(0,null);
+  }else if(run.phase==="holding"){
+    big.classList.add("holding");if(type==="MP")big.classList.add("mp");
+    if(type==="CP"){ins.textContent="Press at the first definite urge to breathe.";big.textContent="First urge"}
+    else if(type==="MP"){ins.textContent="Press when you reach your maximum. Stay relaxed.";big.textContent="Stop"}
+    else{ins.textContent="Press at the first urge to log your CP. The timer keeps going.";big.textContent="First urge (CP)"}
+    mk.textContent="";
+  }else if(run.phase==="holdingMP"){
+    big.classList.add("holding","mp");big.textContent="Stop (MP)";
+    ins.textContent="Keep going to your maximum, then press Stop.";
+    mk.textContent="CP logged at "+fmt(run.cp)+" s";
+  }else if(run.phase==="rest"){
+    big.classList.add("rest");big.textContent="Skip rest";tm.classList.add("rest");
+    ins.textContent="Breathe gently through your nose. Small, calm breaths.";
+    mk.textContent=last?("Logged: "+resultText(last)):"";
+    drawScale(null,null);restTick();
+  }
+}
+function resultText(r){
+  const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");return p.join(", ");
+}
+
+/* Scale: CP bands used in Buteyko teaching */
+function drawScale(e,cp){
+  const svg=$("scale");
+  const top=Math.max(60,e?Math.ceil((e+5)/30)*30:60);
+  const W=560,L=10,R=550,x=v=>L+(R-L)*Math.min(v,top)/top;
+  let h="";
+  const bands=[[0,10],[10,20],[20,40],[40,top]];
+  bands.forEach((b,i)=>{h+='<rect x="'+x(b[0])+'" y="10" width="'+Math.max(0,x(b[1])-x(b[0]))+'" height="10" rx="2" fill="var(--cp)" opacity="'+(0.12+i*0.12)+'"/>'});
+  const step=top<=60?10:(top<=120?20:30);
+  for(let v=0;v<=top;v+=step){h+='<text x="'+x(v)+'" y="38" text-anchor="middle">'+v+'</text>'}
+  if(cp!=null)h+='<rect x="'+(x(cp)-1.5)+'" y="4" width="3" height="22" rx="1.5" fill="var(--cp)"/>';
+  if(e!=null&&e>0){const c=run&&run.phase==="holdingMP"||(run&&run.seq[run.idx]==="MP")?"var(--mp)":"var(--ink)";h+='<circle cx="'+x(e)+'" cy="15" r="7" fill="'+c+'"/>'}
+  svg.innerHTML=h;
+}
+
+document.addEventListener("keydown",ev=>{
+  if(!run||$("v-run").hidden)return;
+  const tag=(ev.target.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="textarea"||tag==="select")return;
+  if(tag==="button"&&ev.target.id!=="big"&&ev.code!=="Escape")return;
+  if(ev.code==="Space"||ev.code==="Enter"){ev.preventDefault();if(!ev.repeat)primary()}
+  else if(ev.code==="Escape"){cancelHold()}
+});
+$("big").addEventListener("click",ev=>{ev.preventDefault();if(ev.detail===0)return;primary()});
+$("cancelHold").onclick=cancelHold;
+$("redoLast").onclick=redoLast;
+$("endEarly").onclick=()=>{
+  if(!run)return;cancelAnimationFrame(raf);clearTimeout(restTimer);
+  if(run.results.length)finishSession();else{run=null;keepAwake(false);show("setup")}
+};
+
+/* ---------- Done ---------- */
+function finishSession(){
+  pending={id:Date.now().toString(36),date:run.started,results:run.results.slice(),planned:run.seq.slice()};
+  run=null;keepAwake(false);
+  $("pulseStart").value="";$("pulseEnd").value="";$("notes").value="";
+  resetDiscard();renderDone();show("done");
+}
+function renderDone(){
+  let h='<tr><th>#</th><th>Hold</th><th class="num">CP (s)</th><th class="num">MP (s)</th></tr>';
+  pending.results.forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td><td>'+NAMES[r.type]+'</td><td class="num cpv">'+fmt(r.cp)+'</td><td class="num mpv">'+fmt(r.mp)+'</td></tr>'});
+  const s=stats(pending);
+  h+='<tr><td></td><td><b>Average / best</b></td><td class="num cpv">'+(s.avgCp==null?"-":s.avgCp.toFixed(0))+'</td><td class="num mpv">'+fmt(s.bestMp)+'</td></tr>';
+  $("doneTable").innerHTML=h;
+}
+$("saveSession").onclick=()=>{
+  if(!pending)return;
+  const ps=parseInt($("pulseStart").value,10),pe=parseInt($("pulseEnd").value,10);
+  pending.pulseStart=isNaN(ps)?null:ps;pending.pulseEnd=isNaN(pe)?null:pe;
+  pending.notes=$("notes").value.trim();
+  upsert(pending);pending=null;
+  toast(commit(true)?"Saved to history":"Saved for now, but this browser is blocking storage");
+  show("history");
+};
+function resetDiscard(){$("discardWrap").innerHTML='<button class="ghost danger" id="discard">Discard</button>';$("discard").onclick=askDiscard}
+function askDiscard(){
+  const w=$("discardWrap");
+  w.innerHTML='<span class="confirm">Discard this session? <button class="ghost danger" id="dYes">Yes, discard</button><button class="ghost" id="dNo">Keep it</button></span>';
+  $("dYes").onclick=()=>{pending=null;resetDiscard();show("setup")};
+  $("dNo").onclick=resetDiscard;
+}
+resetDiscard();
+
+/* ---------- History ---------- */
+function stats(s){
+  const cps=s.results.map(r=>r.cp).filter(v=>v!=null),mps=s.results.map(r=>r.mp).filter(v=>v!=null);
+  return{avgCp:cps.length?cps.reduce((a,b)=>a+b,0)/cps.length:null,bestMp:mps.length?Math.max(...mps):null};
+}
+function fdate(iso){const d=new Date(iso);return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})+", "+d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}
+function renderHistory(){
+  const list=$("sessList");
+  if(!log.length){
+    list.innerHTML='<div class="emptystate">No sessions yet. Finish a session and press Save to see it here, with your CP and MP trend above.</div>';
+  }else{
+    list.innerHTML="";
+    log.slice().reverse().forEach(s=>{
+      const d=document.createElement("div");d.className="sess";
+      if(s.id===editingId)renderEditor(d,s);else renderSessView(d,s);
+      list.appendChild(d);
+    });
+  }
+  renderChart();renderBackupInfo();
+}
+let editingId=null;
+function renderSessView(d,s){
+  const st=stats(s);
+  let holds=s.results.map(r=>'<span>'+resultText(r)+'</span>').join("");
+  let meta=[];if(st.avgCp!=null)meta.push("Avg CP "+st.avgCp.toFixed(0)+" s");if(st.bestMp!=null)meta.push("Best MP "+fmt(st.bestMp)+" s");
+  if(s.pulseStart||s.pulseEnd)meta.push("Pulse "+(s.pulseStart||"-")+" to "+(s.pulseEnd||"-"));
+  d.innerHTML='<div class="top"><span class="date">'+fdate(s.date)+(s.edited?' <span class="meta">(edited)</span>':'')+'</span><span class="meta">'+meta.join(" | ")+'</span></div><div class="holds">'+holds+'</div>'+(s.notes?'<div class="note"></div>':'')+'<div class="acts"><button class="linkbtn" data-a="edit">Edit</button><button class="linkbtn" data-a="del">Delete</button></div>';
+  if(s.notes)d.querySelector(".note").textContent=s.notes;
+  const acts=d.querySelector(".acts");
+  acts.querySelector('[data-a="edit"]').onclick=()=>{editingId=s.id;renderHistory()};
+  acts.querySelector('[data-a="del"]').onclick=()=>{
+    acts.innerHTML='<span class="confirm">Delete this session for good? <button class="ghost danger">Delete</button><button class="ghost">Keep</button></span>';
+    const [y,n]=acts.querySelectorAll("button");
+    y.onclick=()=>{tombstone(s.id);commit(true);toast("Session deleted");renderHistory()};
+    n.onclick=()=>renderSessView(d,s);
+  };
+}
+function toLocalInput(iso){const d=new Date(iso),p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes())}
+function renderEditor(d,s){
+  d.classList.add("editing");
+  const draft=JSON.parse(JSON.stringify(s));
+  const k="e"+s.id;
+  function holdsHtml(){
+    let h='<table class="edtable"><tr><th>#</th><th>Hold</th><th>CP (s)</th><th>MP (s)</th><th></th></tr>';
+    draft.results.forEach((r,i)=>{
+      h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td><td><select id="'+k+'t'+i+'" aria-label="Hold '+(i+1)+' type">'+["CP","MP","CPMP"].map(t=>'<option value="'+t+'"'+(r.type===t?" selected":"")+'>'+SHORT[t]+'</option>').join("")+'</select></td>'+
+        '<td><input type="number" min="0" max="600" step="1" id="'+k+'c'+i+'" aria-label="Hold '+(i+1)+' CP seconds" value="'+(r.cp==null?"":Math.round(r.cp))+'"'+(r.type==="MP"?" disabled":"")+'></td>'+
+        '<td><input type="number" min="0" max="600" step="1" id="'+k+'m'+i+'" aria-label="Hold '+(i+1)+' MP seconds" value="'+(r.mp==null?"":Math.round(r.mp))+'"'+(r.type==="CP"?" disabled":"")+'></td>'+
+        '<td><button class="linkbtn" data-rm="'+i+'">Remove</button></td></tr>';
+    });
+    return h+'</table>';
+  }
+  d.innerHTML='<div class="top"><span class="date">Editing session</span></div>'+
+    '<label class="field">Date and time<input type="datetime-local" id="'+k+'dt" value="'+toLocalInput(s.date)+'"></label>'+
+    '<div class="tablewrap" id="'+k+'holds"></div>'+
+    '<div class="row"><button class="chipbtn" id="'+k+'add">+ Add a hold</button></div>'+
+    '<div class="grid2"><label class="field">Pulse at start (bpm)<input type="number" min="30" max="200" id="'+k+'ps" value="'+(s.pulseStart??"")+'"></label>'+
+    '<label class="field">Pulse at end (bpm)<input type="number" min="30" max="200" id="'+k+'pe" value="'+(s.pulseEnd??"")+'"></label></div>'+
+    '<label class="field">Notes<textarea id="'+k+'n"></textarea></label>'+
+    '<p class="err" id="'+k+'err" hidden></p>'+
+    '<div class="row"><button class="primary" id="'+k+'save">Save changes</button><button class="ghost" id="'+k+'cancel">Cancel</button></div>';
+  d.querySelector("#"+k+"n").value=s.notes||"";
+  const hw=d.querySelector("#"+k+"holds");
+  function readRows(){
+    draft.results.forEach((r,i)=>{
+      r.type=d.querySelector("#"+k+"t"+i).value;
+      const c=d.querySelector("#"+k+"c"+i).value,m=d.querySelector("#"+k+"m"+i).value;
+      r.cp=c===""?null:+c;r.mp=m===""?null:+m;
+    });
+  }
+  function paint(){
+    hw.innerHTML=holdsHtml();
+    hw.querySelectorAll("select").forEach(sel=>sel.onchange=()=>{readRows();paint()});
+    hw.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{readRows();draft.results.splice(+b.dataset.rm,1);paint()});
+  }
+  paint();
+  d.querySelector("#"+k+"add").onclick=()=>{readRows();draft.results.push({type:"CP",cp:null,mp:null});paint()};
+  d.querySelector("#"+k+"cancel").onclick=()=>{editingId=null;renderHistory()};
+  d.querySelector("#"+k+"save").onclick=()=>{
+    readRows();
+    const err=d.querySelector("#"+k+"err");
+    const problem=(()=>{
+      if(!draft.results.length)return"A session needs at least one hold. To remove the whole session, cancel and use Delete.";
+      for(let i=0;i<draft.results.length;i++){
+        const r=draft.results[i];
+        if(r.type==="MP")r.cp=null;if(r.type==="CP")r.mp=null;
+        if(r.type!=="MP"&&r.cp==null)return"Hold "+(i+1)+" needs a CP time.";
+        if(r.type!=="CP"&&r.mp==null)return"Hold "+(i+1)+" needs an MP time.";
+        if(r.type==="CPMP"&&r.mp<r.cp)return"Hold "+(i+1)+": the MP can't be shorter than the CP, since it carries on from it.";
+      }
+      return"";
+    })();
+    if(problem){err.textContent=problem;err.hidden=false;return}
+    const dt=d.querySelector("#"+k+"dt").value;
+    if(dt){const nd=new Date(dt);if(!isNaN(nd))draft.date=nd.toISOString()}
+    const ps=parseInt(d.querySelector("#"+k+"ps").value,10),pe=parseInt(d.querySelector("#"+k+"pe").value,10);
+    draft.pulseStart=isNaN(ps)?null:ps;draft.pulseEnd=isNaN(pe)?null:pe;
+    draft.notes=d.querySelector("#"+k+"n").value.trim();
+    draft.edited=new Date().toISOString();
+    upsert(draft);commit(true);editingId=null;toast("Changes saved");renderHistory();
+  };
+}
+function renderChart(){
+  const wrap=$("chartWrap"),pts=log.slice(-30).map(s=>Object.assign({date:s.date},stats(s)));
+  if(pts.length<2){wrap.innerHTML='<div class="emptystate">The chart appears once you have two saved sessions.</div>';return}
+  const W=640,H=240,L=36,R=12,T=12,B=30;
+  const maxV=Math.max(60,...pts.map(p=>p.bestMp||0),...pts.map(p=>p.avgCp||0));
+  const top=Math.ceil(maxV/20)*20;
+  const x=i=>L+(W-L-R)*(pts.length===1?0.5:i/(pts.length-1)),y=v=>T+(H-T-B)*(1-v/top);
+  let h='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="CP and MP by session">';
+  for(let v=0;v<=top;v+=20){h+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" text-anchor="end">'+v+'</text>'}
+  const line=(key,col)=>{
+    const p=pts.map((d,i)=>d[key]==null?null:[x(i),y(d[key])]).filter(Boolean);
+    if(!p.length)return"";
+    let s='<polyline fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="'+p.map(q=>q.join(",")).join(" ")+'"/>';
+    p.forEach((q,i)=>{s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="'+(i===p.length-1?5:3)+'" fill="'+col+'"/>'});
+    return s;
+  };
+  h+=line("bestMp","var(--mp)")+line("avgCp","var(--cp)");
+  const sd=iso=>new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+  h+='<text x="'+L+'" y="'+(H-8)+'">'+sd(pts[0].date)+'</text><text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end">'+sd(pts[pts.length-1].date)+'</text>';
+  h+='<text x="'+L+'" y="'+(T-2)+'" style="font-size:10px">seconds</text></svg>';
+  wrap.innerHTML=h;
+}
+function csv(){
+  const rows=[["Date","Time","Session","Hold no","Hold type","CP (s)","MP (s)","Pulse start","Pulse end","Notes"]];
+  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
+  return rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(",")).join("\r\n");
+}
+function download(name,text,type){
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast("Downloading "+name)}catch(e){toast("Download is not available here. Use Copy CSV instead.")}
+}
+const stamp=()=>new Date().toISOString().slice(0,10);
+$("dlCsv").onclick=()=>download("buteyko-"+stamp()+".csv",csv(),"text/csv");
+const LS_BK="buteyko-lastbackup-v1";
+$("dlJson").onclick=()=>{
+  if(!log.length){toast("Nothing to back up yet");return}
+  download("buteyko-backup-"+stamp()+".json",JSON.stringify({app:"buteyko-practice",version:1,exported:new Date().toISOString(),sessions:log},null,1),"application/json");
+  save(LS_BK,{at:new Date().toISOString(),count:log.length});renderBackupInfo();
+};
+function renderBackupInfo(){
+  const b=load(LS_BK,null),el=$("backupInfo");
+  if(!log.length){el.textContent="";el.hidden=true;return}
+  el.hidden=false;
+  if(!b){el.textContent="No backup saved yet from this computer.";el.className="backupinfo warn";return}
+  const newer=log.filter(s=>ts(s)>b.at).length;
+  el.className="backupinfo"+(newer?" warn":"");
+  el.textContent="Last backup "+fdate(b.at)+" ("+b.count+" sessions)."+(newer?" "+newer+" session"+(newer===1?" has":"s have")+" been added or changed since.":" Up to date.");
+}
+$("copyCsv").onclick=()=>{navigator.clipboard.writeText(csv()).then(()=>toast("CSV copied, paste it into Excel"),()=>toast("Copy was blocked by the browser"))};
+function validSessions(ss){return ss.filter(s=>s&&!s.deleted&&s.id&&s.date&&Array.isArray(s.results)&&s.results.length&&s.results.every(r=>r&&NAMES[r.type]))}
+$("importJson").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{
+    let ss;
+    try{const d=JSON.parse(rd.result);ss=validSessions(Array.isArray(d)?d:d.sessions||[]);if(!ss.length)throw 0}
+    catch(err){toast("That file is not a Buteyko Practice backup");return}
+    const have=new Map(log.map(s=>[s.id,s]));
+    const fresh=ss.filter(s=>!have.has(s.id)).length;
+    const box=$("importChoice");box.hidden=false;
+    box.innerHTML='<div class="choice"><p>This backup has <b>'+ss.length+'</b> session'+(ss.length===1?"":"s")+'. '+fresh+' of them '+(fresh===1?"is":"are")+' not in this app yet.</p>'+
+      '<div class="row"><button class="primary" id="impMerge" style="padding:10px 20px;font-size:.95rem">Add them to my history</button>'+
+      (log.length?'<button class="ghost danger" id="impReplace">Replace my history with the backup</button>':'')+
+      '<button class="ghost" id="impCancel">Cancel</button></div>'+
+      (log.length?'<p class="hint" style="margin:0">Adding keeps everything here and fills in what\'s missing. Where a session exists in both, the most recently edited copy wins.</p>':'')+'</div>';
+    $("impCancel").onclick=()=>{box.hidden=true;box.innerHTML=""};
+    $("impMerge").onclick=()=>{
+      let added=0,updated=0;const all=new Map(store.map(s=>[s.id,s]));
+      ss.forEach(s=>{const cur=all.get(s.id);
+        if(!cur){added++}else if(ts(s)>ts(cur)){updated++}});
+      store=mergeSets(store,ss);commit(true);
+      box.hidden=true;box.innerHTML="";renderHistory();
+      toast("Added "+added+", updated "+updated);
+    };
+    const rep=$("impReplace");
+    if(rep)rep.onclick=()=>{
+      box.querySelector(".row").innerHTML='<span class="confirm">This removes the '+log.length+' session'+(log.length===1?"":"s")+' here and uses the backup instead. <button class="ghost danger" id="impRepYes">Replace</button><button class="ghost" id="impRepNo">Cancel</button></span>';
+      $("impRepYes").onclick=()=>{const keep=new Set(ss.map(x=>x.id));log.forEach(x=>{if(!keep.has(x.id))tombstone(x.id)});ss.forEach(x=>upsert(Object.assign({},x)));commit(true);box.hidden=true;box.innerHTML="";renderHistory();toast("History replaced from backup")};
+      $("impRepNo").onclick=()=>{box.hidden=true;box.innerHTML=""};
+    };
+  };
+  rd.readAsText(f);e.target.value="";
+};
+
+let toastT=0;
+function toast(msg){let t=document.querySelector(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
+
+
+/* ---------- Google Drive sync ---------- */
+const Sync=(()=>{
+  const CID=((window.BUTEYKO_CONFIG||{}).googleClientId||"").trim();
+  const enabled=/\.apps\.googleusercontent\.com$/.test(CID);
+  const SCOPE="https://www.googleapis.com/auth/drive.file";
+  const FILE_NAME="Buteyko Practice log.json", FOLDER_NAME="Buteyko Practice";
+  const LS_AUTH="buteyko-auth-v1", LS_FILE="buteyko-drive-v1", LS_DIRTY="buteyko-dirty-v1", LS_OWNER="buteyko-owner-v1", LS_LAST="buteyko-lastsync-v1";
+  let auth=load(LS_AUTH,null);           // {token, exp, email}
+  let drive=load(LS_FILE,null);          // {fileId, folderId, email}
+  let tokenClient=null, gisReady=false, busy=false, again=false, debounce=0;
+  let status="idle", errMsg="", ownerClash=null;
+
+  const tokenValid=()=>auth&&auth.token&&auth.exp>Date.now()+60000;
+  const everSignedIn=()=>!!(auth&&auth.email);
+  const dirty=()=>!!load(LS_DIRTY,false);
+
+  function loadGis(){
+    if(!enabled||document.getElementById("gis"))return;
+    const sc=document.createElement("script");sc.id="gis";sc.src="https://accounts.google.com/gsi/client";sc.async=true;
+    sc.onload=()=>{
+      try{
+        tokenClient=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPE,callback:()=>{}});
+        gisReady=true;paint();
+      }catch(e){status="error";errMsg="Google sign-in failed to start.";paint()}
+    };
+    sc.onerror=()=>{paint()};
+    document.head.appendChild(sc);
+  }
+
+  // Must be called synchronously inside a click for the popup to be allowed.
+  function requestToken(forceChooser){
+    return new Promise((resolve,reject)=>{
+      if(!gisReady){reject(new Error("Google sign-in hasn't loaded yet. Check the connection and try again."));return}
+      tokenClient.callback=r=>{
+        if(r.error){reject(new Error(r.error==="access_denied"?"Access to Google Drive was not allowed.":"Sign-in did not complete."));return}
+        if(!google.accounts.oauth2.hasGrantedAllScopes(r,SCOPE)){reject(new Error("Please tick the Google Drive box when signing in, so the app can save your log."));return}
+        auth=Object.assign({},auth||{},{token:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});
+        save(LS_AUTH,auth);resolve(auth.token);
+      };
+      tokenClient.error_callback=e=>reject(new Error(e&&e.type==="popup_closed"?"The sign-in window was closed.":"The sign-in window was blocked. Allow pop-ups for this site and try again."));
+      const opts={prompt:forceChooser?"select_account":""};
+      if(auth&&auth.email&&!forceChooser)opts.login_hint=auth.email;
+      tokenClient.requestAccessToken(opts);
+    });
+  }
+
+  async function api(url,opts={}){
+    const r=await fetch(url,Object.assign({},opts,{headers:Object.assign({Authorization:"Bearer "+auth.token},opts.headers||{})}));
+    if(r.status===401){auth.token=null;save(LS_AUTH,auth);const e=new Error("auth");e.auth=true;throw e}
+    if(!r.ok){const e=new Error("Drive error "+r.status);e.status=r.status;throw e}
+    return r;
+  }
+  const DRIVE="https://www.googleapis.com/drive/v3/files", UPLOAD="https://www.googleapis.com/upload/drive/v3/files";
+  async function findOne(q){
+    const r=await api(DRIVE+"?spaces=drive&fields=files(id,name,modifiedTime,parents)&orderBy=modifiedTime desc&q="+encodeURIComponent(q+" and trashed=false"));
+    const j=await r.json();return (j.files&&j.files[0])||null;
+  }
+  async function createMultipart(meta,body){
+    const b="bp"+Math.random().toString(36).slice(2);
+    const payload="--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify(meta)+"\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+body+"\r\n--"+b+"--";
+    const r=await api(UPLOAD+"?uploadType=multipart&fields=id",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+b},body:payload});
+    return (await r.json()).id;
+  }
+  async function ensureFolder(){
+    const f=await findOne("name='"+FOLDER_NAME+"' and mimeType='application/vnd.google-apps.folder'");
+    if(f)return f.id;
+    const r=await api(DRIVE+"?fields=id",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:FOLDER_NAME,mimeType:"application/vnd.google-apps.folder"})});
+    return (await r.json()).id;
+  }
+  const doc=sessions=>JSON.stringify({app:"buteyko-practice",version:1,saved:new Date().toISOString(),sessions},null,1);
+  const norm=a=>JSON.stringify(a.slice().sort((x,y)=>x.id<y.id?-1:1));
+
+  async function run(interactive){
+    if(!enabled)return;
+    if(busy){again=true;return}
+    if(!navigator.onLine){status="offline";paint();return}
+    let tokenP=null;
+    if(!tokenValid()){
+      if(!interactive){status=everSignedIn()?"needtap":"signedout";paint();return}
+      tokenP=requestToken(!everSignedIn());
+    }
+    busy=true;status="syncing";errMsg="";paint();
+    try{
+      if(tokenP)await tokenP;
+      if(!auth.email){
+        const r=await api("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)");
+        auth.email=((await r.json()).user||{}).emailAddress||"";save(LS_AUTH,auth);
+      }
+      const owner=load(LS_OWNER,null);
+      if(owner&&auth.email&&owner!==auth.email&&store.length){ownerClash={was:owner,now:auth.email};status="clash";return}
+      if(!drive||drive.email!==auth.email)drive={email:auth.email};
+      let remote=[];
+      if(drive.fileId){
+        try{const r=await api(DRIVE+"/"+drive.fileId+"?alt=media");remote=(await r.json()).sessions||[]}
+        catch(e){if(e.status===404)drive.fileId=null;else throw e}
+      }
+      if(!drive.fileId){
+        const f=await findOne("name='"+FILE_NAME+"'");
+        if(f){drive.fileId=f.id;drive.folderId=(f.parents||[])[0]||drive.folderId;const r=await api(DRIVE+"/"+f.id+"?alt=media");remote=(await r.json()).sessions||[]}
+      }
+      const merged=mergeSets(store,remote);
+      if(norm(merged)!==norm(store)){store=merged;refreshLog();save(LS_LOG,store);if(!$("v-history").hidden&&!editingId)renderHistory()}
+      if(!drive.fileId){
+        drive.folderId=await ensureFolder();
+        drive.fileId=await createMultipart({name:FILE_NAME,parents:[drive.folderId],mimeType:"application/json"},doc(merged));
+      }else if(norm(merged)!==norm(remote)){
+        await api(UPLOAD+"/"+drive.fileId+"?uploadType=media",{method:"PATCH",headers:{"Content-Type":"application/json"},body:doc(merged)});
+      }
+      save(LS_FILE,drive);save(LS_OWNER,auth.email);save(LS_DIRTY,false);save(LS_LAST,new Date().toISOString());
+      status="synced";
+    }catch(e){
+      if(e.auth){status="needtap"}
+      else if(!navigator.onLine){status="offline"}
+      else{status="error";errMsg=e.message||"Sync failed."}
+    }finally{
+      busy=false;paint();
+      if(again){again=false;setTimeout(()=>run(false),50)}
+    }
+  }
+
+  function changed(gesture){
+    save(LS_DIRTY,true);
+    if(!enabled)return;
+    if(gesture&&everSignedIn()&&!tokenValid()){run(true);return}
+    clearTimeout(debounce);debounce=setTimeout(()=>run(false),600);
+    paint();
+  }
+
+  function signOut(){
+    try{if(auth&&auth.token)google.accounts.oauth2.revoke(auth.token,()=>{})}catch(e){}
+    auth=null;drive=null;save(LS_AUTH,null);save(LS_FILE,null);status="signedout";paint();
+  }
+  function resolveClash(useNew){
+    if(useNew){store=[];refreshLog();save(LS_LOG,store);save(LS_OWNER,null);save(LS_DIRTY,false);ownerClash=null;run(true)}
+    else{ownerClash=null;signOut()}
+  }
+
+  function chipText(){
+    if(status==="syncing")return["Syncing","busy"];
+    if(status==="offline")return["Offline, saved here","warn"];
+    if(status==="error")return["Sync problem","bad"];
+    if(status==="clash")return["Check sync","bad"];
+    if(!everSignedIn())return["Sign in to sync","warn"];
+    if(!tokenValid()||status==="needtap")return["Tap to sync","warn"];
+    if(dirty())return["Not synced yet","warn"];
+    const l=load(LS_LAST,null);
+    return["Synced"+(l?" "+new Date(l).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):""),"ok"];
+  }
+  function paint(){
+    const chip=$("syncChip");
+    if(!enabled){chip.hidden=true}
+    else{chip.hidden=false;const [t,c]=chipText();$("syncText").textContent=t;chip.className="syncchip "+c}
+    const body=$("driveBody");if(!body)return;
+    if(!enabled){body.innerHTML='<p class="hint" style="margin:0">Drive sync isn\'t set up for this copy of the app. History is kept on this device only. Use Save backup file to move it between devices.</p>';return}
+    if(status==="clash"&&ownerClash){
+      body.innerHTML='<div class="choice"><p>This device has history from <b></b>. You signed in as <b></b>.</p><div class="row"><button class="primary" id="clashNew" style="padding:10px 20px;font-size:.95rem">Clear this device and use the new account</button><button class="ghost" id="clashBack">Cancel and sign out</button></div><p class="hint" style="margin:0">Clearing only affects this device. The other account\'s history stays safe in its own Google Drive.</p></div>';
+      const bs=body.querySelectorAll("b");bs[0].textContent=ownerClash.was;bs[1].textContent=ownerClash.now;
+      $("clashNew").onclick=()=>resolveClash(true);$("clashBack").onclick=()=>resolveClash(false);
+      return;
+    }
+    if(!everSignedIn()){
+      body.innerHTML='<p style="margin:0">Sign in with Google to keep your history in your own Google Drive and see it on all your devices.</p><p class="hint" style="margin:0">The app can only see the one log file it creates, in a folder called "Buteyko Practice". It can\'t read anything else in your Drive.</p><div class="row"><button class="primary" id="gsign" style="padding:10px 20px;font-size:.95rem">Sign in with Google</button></div>'+(errMsg?'<p class="err"></p>':'');
+      if(errMsg)body.querySelector(".err").textContent=errMsg;
+      $("gsign").onclick=()=>run(true);
+      return;
+    }
+    const l=load(LS_LAST,null);
+    body.innerHTML='<p style="margin:0">Saving to <b></b>\'s Google Drive.</p><p class="hint" style="margin:0" id="dmeta"></p>'+(errMsg?'<p class="err"></p>':'')+
+      '<div class="row"><button class="ghost" id="dsync">Sync now</button>'+(drive&&drive.folderId?'<a class="ghost" target="_blank" rel="noopener" href="https://drive.google.com/drive/folders/'+encodeURIComponent(drive.folderId)+'">Open in Drive</a>':'')+'<button class="ghost danger" id="dout">Sign out</button></div>';
+    body.querySelector("b").textContent=auth.email||"your";
+    $("dmeta").textContent=(l?"Last synced "+fdate(l)+".":"Not synced yet.")+(status==="offline"?" You're offline. Changes are saved here and will sync when you're back online.":"");
+    if(errMsg)body.querySelector(".err").textContent=errMsg;
+    $("dsync").onclick=()=>run(true);
+    $("dout").onclick=signOut;
+  }
+
+  $("syncChip").onclick=()=>{
+    if(status==="clash"||status==="error"||!everSignedIn()){show("history");setTimeout(()=>$("drivePanel").scrollIntoView({behavior:"smooth"}),50);if(status!=="clash"&&everSignedIn())run(true);return}
+    run(true);
+  };
+  window.addEventListener("online",()=>{if(tokenValid())run(false);else paint()});
+  window.addEventListener("offline",()=>{status="offline";paint()});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&tokenValid())run(false)});
+
+  loadGis();paint();
+  if(enabled&&tokenValid())setTimeout(()=>run(false),300);
+  return {changed,paint,run};
+})();
+window.Sync=Sync;
+
+/* ---------- Offline support ---------- */
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});
+}
+
+drawScale(0,null);
+})();
+</script>
+
+</body>
+</html>
