@@ -1,5 +1,5 @@
 // Bump VERSION whenever you upload changed files, so phones pick up the update.
-const VERSION = "bp-1.0.1";
+const VERSION = "bp-1.1.1";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest",
   "./icon-180.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./privacy.html"];
 const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
