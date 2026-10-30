@@ -19,7 +19,7 @@
 /* Layout: one calm column; a single big round button carries every hold. */
 :root{
   --bg:#EDF2F3; --surface:#FFFFFF; --ink:#1B2A2F; --muted:#5A6D73; --line:#D2DCDF;
-  --cp:#2E6E72; --cp-soft:#D9EAEA; --mp:#585DA6; --mp-soft:#E1E2F3; --warn:#9A4B3C;
+  --cp:#2E6E72; --cp-soft:#D9EAEA; --mp:#585DA6; --mp-soft:#E1E2F3; --warn:#9A4B3C; --rec:#A0672A; --rec-soft:#F3E6D6;
   --on-accent:#FFFFFF;
   --f-display:"Young Serif", Georgia, "Times New Roman", serif;
   --f-body:"Lexend", "Segoe UI", system-ui, sans-serif;
@@ -27,11 +27,11 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
-  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --on-accent:#0E181B;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --on-accent:#0E181B;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
-  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --on-accent:#0E181B;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --on-accent:#0E181B;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-weight:400}
@@ -74,7 +74,7 @@ textarea{min-height:70px;resize:vertical}
 .primary:disabled{opacity:.4;cursor:not-allowed}
 .ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 16px;cursor:pointer;font-size:.9rem}
 .ghost.danger{color:var(--warn);border-color:var(--warn)}
-.key{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.key{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .key div{font-size:.88rem;color:var(--muted);min-width:0}
 .key b{display:block;color:var(--ink);font-weight:500;margin-bottom:2px}
 
@@ -88,7 +88,9 @@ textarea{min-height:70px;resize:vertical}
 .dot.CPMP.done,.dot.CPMP.now{background:linear-gradient(90deg,var(--cp) 50%,var(--mp) 50%)}
 .dot.now{opacity:.5}
 .typename{font-family:var(--f-display);font-size:1.7rem}
-.typename.CP{color:var(--cp)} .typename.MP{color:var(--mp)}
+.typename.CP{color:var(--cp)} .typename.MP{color:var(--mp)} .typename.REC{color:var(--rec)}
+.big.rec{background:var(--rec)}
+.recv{color:var(--rec);font-weight:500}
 .instr{color:var(--muted);max-width:44ch;margin:0;min-height:3em}
 .timer{font-size:clamp(4.5rem,18vw,7.5rem);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .timer small{font-size:.25em;color:var(--muted);font-weight:400;margin-left:4px;letter-spacing:0}
@@ -213,12 +215,32 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     </div>
   </div>
 
+  <div class="panel">
+    <h3>Options</h3>
+    <div class="grid2">
+      <label class="check"><input type="checkbox" id="recovery"> Time my recovery after each MP</label>
+      <label class="field">Call out the seconds during holds
+        <select id="voice">
+          <option value="0">Off</option>
+          <option value="5">Every 5 seconds</option>
+          <option value="10">Every 10 seconds</option>
+          <option value="15">Every 15 seconds</option>
+        </select>
+      </label>
+    </div>
+    <div class="row" id="voiceRow" hidden>
+      <button class="ghost" id="voiceTest">Test the voice</button>
+      <span class="hint" id="voiceNote"></span>
+    </div>
+  </div>
+
   <button class="primary" id="startSession">Start session</button>
 
   <div class="key">
     <div><b>Control Pause (CP)</b>After a normal out-breath, hold until the first definite urge to breathe.</div>
     <div><b>Maximum Pause (MP)</b>Hold past the first urge to a moderate, comfortable limit.</div>
     <div><b>CP then MP</b>One hold. Tap at the first urge to log the CP, the timer keeps going, tap again to finish the MP.</div>
+    <div><b>Recovery</b>After an MP, gentle shallow breathing until your breathing settles. Tap Recovered when it has. This should get shorter with practice.</div>
   </div>
 </section>
 
@@ -268,7 +290,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   <div class="panel" id="chartPanel">
     <h3>Progress by session</h3>
     <div id="chartWrap"></div>
-    <div class="legend"><span><i style="background:var(--cp)"></i>Average CP</span><span><i style="background:var(--mp)"></i>Best MP</span></div>
+    <div class="legend"><span><i style="background:var(--cp)"></i>Average CP</span><span><i style="background:var(--mp)"></i>Best MP</span><span id="recLegend" hidden><i style="background:var(--rec)"></i>Average recovery</span></div>
   </div>
   <div class="panel">
     <h3>Sessions</h3>
@@ -314,7 +336,7 @@ const $=id=>document.getElementById(id);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 
-let settings=Object.assign({seq:["CPMP","CPMP","CPMP"],rest:60,sound:true},load(LS_SET,{}));
+let settings=Object.assign({seq:["CPMP","CPMP","CPMP"],rest:60,sound:true,recovery:false,voice:0},load(LS_SET,{}));
 let store=load(LS_LOG,[]);
 if(!Array.isArray(store))store=[];
 let log=[];
@@ -354,6 +376,27 @@ function tone(freqs,dur=0.9){
 }
 const SND={start:()=>tone([523]),mark:()=>tone([659]),stop:()=>tone([440,392]),restEnd:()=>tone([523,659],1.1)};
 
+/* ---------- Voice count ---------- */
+const canSpeak="speechSynthesis" in window&&"SpeechSynthesisUtterance" in window;
+let voicePick=null;
+function chooseVoice(){
+  if(!canSpeak)return;
+  const vs=speechSynthesis.getVoices()||[];
+  voicePick=vs.find(v=>/en-GB/i.test(v.lang)&&v.localService)||vs.find(v=>/en-GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang)&&v.localService)||vs.find(v=>/^en/i.test(v.lang))||null;
+}
+if(canSpeak){chooseVoice();try{speechSynthesis.addEventListener("voiceschanged",chooseVoice)}catch(e){}}
+function say(text){
+  if(!canSpeak)return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    if(voicePick){u.voice=voicePick;u.lang=voicePick.lang}else u.lang="en-GB";
+    u.rate=0.8;u.volume=1;speechSynthesis.speak(u);
+  }catch(e){}
+}
+// iPhone and iPad only allow speech once it has started from a tap.
+function unlockVoice(){if(canSpeak&&settings.voice){try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}}
+
 /* ---------- Wake lock ---------- */
 let wake=null;
 async function keepAwake(on){
@@ -390,6 +433,17 @@ $("rest").value=String(settings.rest);
 $("rest").onchange=e=>{settings.rest=+e.target.value;persist()};
 $("sound").checked=settings.sound;
 $("sound").onchange=e=>{settings.sound=e.target.checked;persist()};
+$("recovery").checked=!!settings.recovery;
+$("recovery").onchange=e=>{settings.recovery=e.target.checked;persist()};
+$("voice").value=String(settings.voice||0);
+function paintVoice(){
+  $("voiceRow").hidden=!(+settings.voice);
+  $("voiceNote").textContent=canSpeak?"":"This browser can't speak, so the count is silent here.";
+  $("voiceTest").hidden=!canSpeak;
+}
+$("voice").onchange=e=>{settings.voice=+e.target.value;persist();paintVoice()};
+$("voiceTest").onclick=()=>say((settings.voice||5)+" seconds");
+paintVoice();
 function persist(){save(LS_SET,settings)}
 function renderSeq(){
   const el=$("seq");el.innerHTML="";
@@ -409,7 +463,7 @@ renderSeq();
 let run=null, pending=null, raf=0, restTimer=0;
 $("startSession").onclick=()=>{
   if(!settings.seq.length)return;
-  run={seq:settings.seq.slice(),idx:0,phase:"ready",t0:0,cp:null,results:[],restEnd:0,started:new Date().toISOString()};
+  run={seq:settings.seq.slice(),idx:0,phase:"ready",t0:0,cp:null,results:[],restEnd:0,spoken:0,started:new Date().toISOString(),recovery:!!settings.recovery,voice:+settings.voice||0};
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
   keepAwake(true);show("run");renderRun();
 };
@@ -421,7 +475,7 @@ function primary(){
   if(!run)return;
   const type=run.seq[run.idx];
   if(run.phase==="ready"){
-    run.t0=performance.now();run.cp=null;run.phase="holding";SND.start();loop();
+    run.t0=performance.now();run.cp=null;run.spoken=0;run.phase="holding";unlockVoice();SND.start();loop();
   }else if(run.phase==="holding"){
     const e=elapsed();
     if(type==="CP"){finishHold({type,cp:e,mp:null})}
@@ -429,16 +483,25 @@ function primary(){
     else{run.cp=e;run.phase="holdingMP";SND.mark()}
   }else if(run.phase==="holdingMP"){
     finishHold({type,cp:run.cp,mp:elapsed()});
+  }else if(run.phase==="recovery"){
+    const last=run.results[run.results.length-1];
+    if(last)last.rec=Math.round(elapsed()*10)/10;
+    cancelAnimationFrame(raf);SND.mark();afterHold();
   }else if(run.phase==="rest"){
     endRest(false);
   }
-  renderRun();
+  if(run)renderRun();
 }
 function finishHold(r){
   cancelAnimationFrame(raf);
   r.cp=r.cp==null?null:Math.round(r.cp*10)/10;
   r.mp=r.mp==null?null:Math.round(r.mp*10)/10;
   run.results.push(r);run.idx++;SND.stop();
+  if(canSpeak&&run.voice)try{speechSynthesis.cancel()}catch(e){}
+  if(run.recovery&&r.mp!=null){run.phase="recovery";run.t0=performance.now();loop();return}
+  afterHold();
+}
+function afterHold(){
   if(run.idx>=run.seq.length){finishSession();return}
   if(settings.rest>0){
     run.phase="rest";run.restEnd=performance.now()+settings.rest*1000;
@@ -464,12 +527,14 @@ function cancelHold(){
 }
 function redoLast(){
   if(!run||!run.results.length||run.phase==="holding"||run.phase==="holdingMP")return;
-  clearTimeout(restTimer);run.results.pop();run.idx--;run.phase="ready";renderRun();
+  clearTimeout(restTimer);cancelAnimationFrame(raf);run.results.pop();run.idx--;run.phase="ready";renderRun();
 }
 function loop(){
-  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"))return;
+  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"&&run.phase!=="recovery"))return;
   const e=elapsed();
   $("timer").innerHTML=Math.floor(e)+"<small>s</small>";
+  if(run.phase==="recovery"){raf=requestAnimationFrame(loop);return}
+  if(run.voice){const mark=Math.floor(e/run.voice)*run.voice;if(mark>0&&mark>run.spoken){run.spoken=mark;say(mark+" seconds")}}
   drawScale(e,run.cp);
   raf=requestAnimationFrame(loop);
 }
@@ -477,15 +542,15 @@ function loop(){
 function renderRun(){
   if(!run)return;
   const n=run.seq.length, type=run.seq[Math.min(run.idx,n-1)];
-  $("stepLabel").textContent=run.phase==="rest"?("Rest before hold "+(run.idx+1)+" of "+n):("Hold "+(run.idx+1)+" of "+n);
+  $("stepLabel").textContent=run.phase==="rest"?("Rest before hold "+(run.idx+1)+" of "+n):run.phase==="recovery"?("Recovery after hold "+run.idx+" of "+n):("Hold "+(run.idx+1)+" of "+n);
   const dots=$("dots");dots.innerHTML="";
-  run.seq.forEach((t,i)=>{const d=document.createElement("span");d.className="dot "+t+(i<run.idx?" done":"")+(i===run.idx&&run.phase!=="rest"?" now":"");d.title=NAMES[t];dots.appendChild(d)});
+  run.seq.forEach((t,i)=>{const d=document.createElement("span");d.className="dot "+t+(i<run.idx?" done":"")+(i===run.idx&&run.phase!=="rest"&&run.phase!=="recovery"?" now":"");d.title=NAMES[t];dots.appendChild(d)});
   const tn=$("typeName"), big=$("big"), ins=$("instr"), mk=$("marked"), tm=$("timer");
-  tn.className="typename "+(type==="MP"?"MP":"CP");
-  tn.textContent=run.phase==="rest"?"Rest":NAMES[type];
+  tn.className="typename "+(run.phase==="recovery"?"REC":type==="MP"?"MP":"CP");
+  tn.textContent=run.phase==="rest"?"Rest":run.phase==="recovery"?"Recovery":NAMES[type];
   big.className="big";tm.className="timer";
   $("cancelHold").hidden=!(run.phase==="holding"||run.phase==="holdingMP");
-  $("redoLast").hidden=!(run.results.length&&(run.phase==="ready"||run.phase==="rest"));
+  $("redoLast").hidden=!(run.results.length&&(run.phase==="ready"||run.phase==="rest"||run.phase==="recovery"));
   const last=run.results[run.results.length-1];
   if(run.phase==="ready"){
     tm.innerHTML="0<small>s</small>";
@@ -503,6 +568,12 @@ function renderRun(){
     big.classList.add("holding","mp");big.textContent="Stop (MP)";
     ins.textContent="Keep going to your maximum, then press Stop.";
     mk.textContent="CP logged at "+fmt(run.cp)+" s";
+  }else if(run.phase==="recovery"){
+    big.classList.add("rec");big.textContent="Recovered";
+    ins.textContent="Shallow, gentle breaths through your nose. Press Recovered when your breathing has settled.";
+    mk.textContent=last?("Logged: "+resultText(last)):"";
+    $("timer").innerHTML=Math.floor(elapsed())+"<small>s</small>";
+    drawScale(null,null);
   }else if(run.phase==="rest"){
     big.classList.add("rest");big.textContent="Skip rest";tm.classList.add("rest");
     ins.textContent="Breathe gently through your nose. Small, calm breaths.";
@@ -511,7 +582,7 @@ function renderRun(){
   }
 }
 function resultText(r){
-  const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");return p.join(", ");
+  const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");if(r.rec!=null)p.push("Recovery "+fmt(r.rec)+" s");return p.join(", ");
 }
 
 /* Scale: CP bands used in Buteyko teaching */
@@ -542,6 +613,8 @@ $("cancelHold").onclick=cancelHold;
 $("redoLast").onclick=redoLast;
 $("endEarly").onclick=()=>{
   if(!run)return;cancelAnimationFrame(raf);clearTimeout(restTimer);
+  if(run.phase==="recovery"){const last=run.results[run.results.length-1];if(last)last.rec=Math.round(elapsed()*10)/10}
+  if(canSpeak)try{speechSynthesis.cancel()}catch(e){}
   if(run.results.length)finishSession();else{run=null;keepAwake(false);show("setup")}
 };
 
@@ -553,10 +626,11 @@ function finishSession(){
   resetDiscard();renderDone();show("done");
 }
 function renderDone(){
-  let h='<tr><th>#</th><th>Hold</th><th class="num">CP (s)</th><th class="num">MP (s)</th></tr>';
-  pending.results.forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td><td>'+NAMES[r.type]+'</td><td class="num cpv">'+fmt(r.cp)+'</td><td class="num mpv">'+fmt(r.mp)+'</td></tr>'});
+  const hasRec=pending.results.some(r=>r.rec!=null);
+  let h='<tr><th>#</th><th>Hold</th><th class="num">CP (s)</th><th class="num">MP (s)</th>'+(hasRec?'<th class="num">Recovery (s)</th>':'')+'</tr>';
+  pending.results.forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td><td>'+NAMES[r.type]+'</td><td class="num cpv">'+fmt(r.cp)+'</td><td class="num mpv">'+fmt(r.mp)+'</td>'+(hasRec?'<td class="num recv">'+fmt(r.rec)+'</td>':'')+'</tr>'});
   const s=stats(pending);
-  h+='<tr><td></td><td><b>Average / best</b></td><td class="num cpv">'+(s.avgCp==null?"-":s.avgCp.toFixed(0))+'</td><td class="num mpv">'+fmt(s.bestMp)+'</td></tr>';
+  h+='<tr><td></td><td><b>Average / best</b></td><td class="num cpv">'+(s.avgCp==null?"-":s.avgCp.toFixed(0))+'</td><td class="num mpv">'+fmt(s.bestMp)+'</td>'+(hasRec?'<td class="num recv">'+(s.avgRec==null?"-":s.avgRec.toFixed(0))+'</td>':'')+'</tr>';
   $("doneTable").innerHTML=h;
 }
 $("saveSession").onclick=()=>{
@@ -579,8 +653,9 @@ resetDiscard();
 
 /* ---------- History ---------- */
 function stats(s){
-  const cps=s.results.map(r=>r.cp).filter(v=>v!=null),mps=s.results.map(r=>r.mp).filter(v=>v!=null);
-  return{avgCp:cps.length?cps.reduce((a,b)=>a+b,0)/cps.length:null,bestMp:mps.length?Math.max(...mps):null};
+  const cps=s.results.map(r=>r.cp).filter(v=>v!=null),mps=s.results.map(r=>r.mp).filter(v=>v!=null),recs=s.results.map(r=>r.rec).filter(v=>v!=null);
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  return{avgCp:avg(cps),bestMp:mps.length?Math.max(...mps):null,avgRec:avg(recs)};
 }
 function fdate(iso){const d=new Date(iso);return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})+", "+d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}
 function renderHistory(){
@@ -601,7 +676,7 @@ let editingId=null;
 function renderSessView(d,s){
   const st=stats(s);
   let holds=s.results.map(r=>'<span>'+resultText(r)+'</span>').join("");
-  let meta=[];if(st.avgCp!=null)meta.push("Avg CP "+st.avgCp.toFixed(0)+" s");if(st.bestMp!=null)meta.push("Best MP "+fmt(st.bestMp)+" s");
+  let meta=[];if(st.avgCp!=null)meta.push("Avg CP "+st.avgCp.toFixed(0)+" s");if(st.bestMp!=null)meta.push("Best MP "+fmt(st.bestMp)+" s");if(st.avgRec!=null)meta.push("Avg recovery "+st.avgRec.toFixed(0)+" s");
   if(s.pulseStart||s.pulseEnd)meta.push("Pulse "+(s.pulseStart||"-")+" to "+(s.pulseEnd||"-"));
   d.innerHTML='<div class="top"><span class="date">'+fdate(s.date)+(s.edited?' <span class="meta">(edited)</span>':'')+'</span><span class="meta">'+meta.join(" | ")+'</span></div><div class="holds">'+holds+'</div>'+(s.notes?'<div class="note"></div>':'')+'<div class="acts"><button class="linkbtn" data-a="edit">Edit</button><button class="linkbtn" data-a="del">Delete</button></div>';
   if(s.notes)d.querySelector(".note").textContent=s.notes;
@@ -620,11 +695,12 @@ function renderEditor(d,s){
   const draft=JSON.parse(JSON.stringify(s));
   const k="e"+s.id;
   function holdsHtml(){
-    let h='<table class="edtable"><tr><th>#</th><th>Hold</th><th>CP (s)</th><th>MP (s)</th><th></th></tr>';
+    let h='<table class="edtable"><tr><th>#</th><th>Hold</th><th>CP (s)</th><th>MP (s)</th><th>Recovery (s)</th><th></th></tr>';
     draft.results.forEach((r,i)=>{
       h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td><td><select id="'+k+'t'+i+'" aria-label="Hold '+(i+1)+' type">'+["CP","MP","CPMP"].map(t=>'<option value="'+t+'"'+(r.type===t?" selected":"")+'>'+SHORT[t]+'</option>').join("")+'</select></td>'+
         '<td><input type="number" min="0" max="600" step="1" id="'+k+'c'+i+'" aria-label="Hold '+(i+1)+' CP seconds" value="'+(r.cp==null?"":Math.round(r.cp))+'"'+(r.type==="MP"?" disabled":"")+'></td>'+
         '<td><input type="number" min="0" max="600" step="1" id="'+k+'m'+i+'" aria-label="Hold '+(i+1)+' MP seconds" value="'+(r.mp==null?"":Math.round(r.mp))+'"'+(r.type==="CP"?" disabled":"")+'></td>'+
+        '<td><input type="number" min="0" max="600" step="1" id="'+k+'r'+i+'" aria-label="Hold '+(i+1)+' recovery seconds" value="'+(r.rec==null?"":Math.round(r.rec))+'"'+(r.type==="CP"?" disabled":"")+'></td>'+
         '<td><button class="linkbtn" data-rm="'+i+'">Remove</button></td></tr>';
     });
     return h+'</table>';
@@ -645,6 +721,7 @@ function renderEditor(d,s){
       r.type=d.querySelector("#"+k+"t"+i).value;
       const c=d.querySelector("#"+k+"c"+i).value,m=d.querySelector("#"+k+"m"+i).value;
       r.cp=c===""?null:+c;r.mp=m===""?null:+m;
+      const rv=d.querySelector("#"+k+"r"+i).value;r.rec=rv===""||r.type==="CP"?null:+rv;
     });
   }
   function paint(){
@@ -681,9 +758,10 @@ function renderEditor(d,s){
 }
 function renderChart(){
   const wrap=$("chartWrap"),pts=log.slice(-30).map(s=>Object.assign({date:s.date},stats(s)));
+  $("recLegend").hidden=!pts.some(p=>p.avgRec!=null);
   if(pts.length<2){wrap.innerHTML='<div class="emptystate">The chart appears once you have two saved sessions.</div>';return}
   const W=640,H=240,L=36,R=12,T=12,B=30;
-  const maxV=Math.max(60,...pts.map(p=>p.bestMp||0),...pts.map(p=>p.avgCp||0));
+  const maxV=Math.max(60,...pts.map(p=>p.bestMp||0),...pts.map(p=>p.avgCp||0),...pts.map(p=>p.avgRec||0));
   const top=Math.ceil(maxV/20)*20;
   const x=i=>L+(W-L-R)*(pts.length===1?0.5:i/(pts.length-1)),y=v=>T+(H-T-B)*(1-v/top);
   let h='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="CP and MP by session">';
@@ -695,15 +773,15 @@ function renderChart(){
     p.forEach((q,i)=>{s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="'+(i===p.length-1?5:3)+'" fill="'+col+'"/>'});
     return s;
   };
-  h+=line("bestMp","var(--mp)")+line("avgCp","var(--cp)");
+  h+=line("avgRec","var(--rec)")+line("bestMp","var(--mp)")+line("avgCp","var(--cp)");
   const sd=iso=>new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
   h+='<text x="'+L+'" y="'+(H-8)+'">'+sd(pts[0].date)+'</text><text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end">'+sd(pts[pts.length-1].date)+'</text>';
   h+='<text x="'+L+'" y="'+(T-2)+'" style="font-size:10px">seconds</text></svg>';
   wrap.innerHTML=h;
 }
 function csv(){
-  const rows=[["Date","Time","Session","Hold no","Hold type","CP (s)","MP (s)","Pulse start","Pulse end","Notes"]];
-  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
+  const rows=[["Date","Time","Session","Hold no","Hold type","CP (s)","MP (s)","Recovery (s)","Pulse start","Pulse end","Notes"]];
+  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
   return rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(",")).join("\r\n");
 }
 function download(name,text,type){
