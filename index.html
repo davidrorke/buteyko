@@ -189,6 +189,31 @@ header.top h1{margin-right:auto}
 a.ghost{text-decoration:none;display:inline-flex;align-items:center}
 .foot{padding-block:0 32px;font-size:.82rem}
 .foot a{color:var(--muted)}
+.report{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;display:flex;flex-direction:column;gap:18px}
+.rhead h2{margin:0 0 4px}
+.rhead p{margin:0;color:var(--muted)}
+.rsum{display:grid;gap:8px}
+.rsum div{display:grid;grid-template-columns:9.5em 1fr;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.rsum b{font-weight:500}
+.rsum span{min-width:0}
+@media (max-width:480px){.rsum div{grid-template-columns:1fr;gap:2px}}
+.rsec{margin-top:4px}
+.rsess{break-inside:avoid;page-break-inside:avoid;display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.rsess:last-of-type{border-bottom:0}
+.rsh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.rsh span{color:var(--muted);font-size:.88rem}
+.rsess ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:2px}
+.rsess li{font-variant-numeric:tabular-nums}
+.rsess li.rp{color:var(--pulse);list-style:none;margin-left:-1.4em}
+.rnote{margin:0;color:var(--muted);font-style:italic}
+.rfoot{margin:0;color:var(--muted);font-size:.8rem}
+@media print{
+  :root,:root[data-theme="dark"]{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--cp:#2E6E72;--mp:#585DA6;--rec:#A0672A;--pulse:#A3445E;color-scheme:light}
+  header.top,.foot,.noprint,#toast,.toast{display:none!important}
+  main{padding:0}
+  .report{border:0;padding:0}
+  body{font-size:11pt}
+}
 .linkbtn{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.82rem;padding:0}
 .emptystate{color:var(--muted);text-align:center;padding:24px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:.9rem}
@@ -343,6 +368,17 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   </div>
 </section>
 
+<!-- REPORT -->
+<section id="v-report" hidden>
+  <div class="row noprint">
+    <button class="ghost" id="repBack">Back to history</button>
+    <button class="primary" id="repPrint" style="padding:10px 20px;font-size:.95rem">Print or save as PDF</button>
+    <button class="ghost" id="repCopy">Copy as text</button>
+    <button class="ghost" id="repShare">Share</button>
+  </div>
+  <article class="report" id="reportBody"></article>
+</section>
+
 <!-- HISTORY -->
 <section id="v-history" hidden>
   <h2>History</h2>
@@ -350,6 +386,23 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <h3>Progress by session</h3>
     <div id="chartWrap"></div>
     <div class="legend"><span><i style="background:var(--cp)"></i>Average CP</span><span><i style="background:var(--mp)"></i>Best MP</span><span id="recLegend" hidden><i style="background:var(--rec)"></i>Average recovery</span></div>
+  </div>
+  <div class="panel">
+    <h3>Practice report</h3>
+    <p class="hint" style="margin:0">A readable summary to print, save as PDF, or send to your teacher.</p>
+    <div class="grid2">
+      <label class="field">Period
+        <select id="repDays">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 3 months</option>
+          <option value="0">All sessions</option>
+        </select>
+      </label>
+      <label class="field">Name on report (optional)<input type="text" id="repName" autocomplete="name"></label>
+    </div>
+    <div class="row"><button class="primary" id="makeReport" style="padding:10px 20px;font-size:.95rem">Create report</button></div>
   </div>
   <div class="panel">
     <h3>Sessions</h3>
@@ -471,9 +524,9 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 
 /* ---------- Views ---------- */
 function show(v){
-  ["setup","run","done","history"].forEach(n=>$("v-"+n).hidden=(n!==v));
+  ["setup","run","done","history","report"].forEach(n=>$("v-"+n).hidden=(n!==v));
   $("nav-setup").setAttribute("aria-current",String(v!=="history"));
-  $("nav-history").setAttribute("aria-current",String(v==="history"));
+  $("nav-history").setAttribute("aria-current",String(v==="history"||v==="report"));
   if(v==="history")renderHistory();
   window.scrollTo(0,0);
 }
@@ -1001,10 +1054,7 @@ function renderEditor(d,s){
     upsert(draft);commit(true);editingId=null;toast("Changes saved");renderHistory();
   };
 }
-function renderChart(){
-  const wrap=$("chartWrap"),pts=log.slice(-30).map(s=>Object.assign({date:s.date},stats(s)));
-  $("recLegend").hidden=!pts.some(p=>p.avgRec!=null);
-  if(pts.length<2){wrap.innerHTML='<div class="emptystate">The chart appears once you have two saved sessions.</div>';return}
+function chartSvg(pts){
   const W=640,H=240,L=36,R=12,T=12,B=30;
   const maxV=Math.max(60,...pts.map(p=>p.bestMp||0),...pts.map(p=>p.avgCp||0),...pts.map(p=>p.avgRec||0));
   const top=Math.ceil(maxV/20)*20;
@@ -1022,7 +1072,13 @@ function renderChart(){
   const sd=iso=>new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
   h+='<text x="'+L+'" y="'+(H-8)+'">'+sd(pts[0].date)+'</text><text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end">'+sd(pts[pts.length-1].date)+'</text>';
   h+='<text x="'+L+'" y="'+(T-2)+'" style="font-size:10px">seconds</text></svg>';
-  wrap.innerHTML=h;
+  return h;
+}
+function renderChart(){
+  const wrap=$("chartWrap"),pts=log.slice(-30).map(s=>Object.assign({date:s.date},stats(s)));
+  $("recLegend").hidden=!pts.some(p=>p.avgRec!=null);
+  if(pts.length<2){wrap.innerHTML='<div class="emptystate">The chart appears once you have two saved sessions.</div>';return}
+  wrap.innerHTML=chartSvg(pts);
 }
 function csv(){
   const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","Step type","Steps","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
@@ -1087,6 +1143,119 @@ $("importJson").onchange=e=>{
 let toastT=0;
 function toast(msg){let t=document.querySelector(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
 
+
+/* ---------- Practice report ---------- */
+$("repDays").value=String(settings.repDays||14);
+$("repName").value=settings.repName||"";
+$("repDays").onchange=e=>{settings.repDays=+e.target.value;persist()};
+$("repName").oninput=e=>{settings.repName=e.target.value;persist()};
+const PERIOD={7:"Last 7 days",14:"Last 14 days",30:"Last 30 days",90:"Last 3 months",0:"All sessions"};
+const dlong=d=>new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+const r0=v=>v==null?null:Math.round(v);
+function reportData(){
+  const days=+$("repDays").value;
+  const from=days?new Date(Date.now()-days*864e5):null;
+  if(from)from.setHours(0,0,0,0);
+  const ss=log.filter(s=>!from||new Date(s.date)>=from);
+  const all=ss.flatMap(s=>s.results);
+  const vals=k=>all.map(r=>r[k]).filter(v=>v!=null);
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  const per=ss.map(s=>Object.assign({date:s.date},stats(s)));
+  const firstLast=k=>{const p=per.filter(x=>x[k]!=null);return p.length?{first:p[0][k],last:p[p.length-1][k],n:p.length}:null};
+  const pulses=all.filter(r=>r.type==="PULSE"&&r.bpm!=null).map(r=>r.bpm).concat(ss.flatMap(s=>s.results.some(r=>r.type==="PULSE")?[]:[s.pulseStart,s.pulseEnd]).filter(v=>v!=null));
+  const steps=all.filter(r=>r.stepType&&r.steps!=null);
+  const stepAvg=t=>{const a=steps.filter(r=>r.stepType===t).map(r=>r.steps);return a.length?{avg:avg(a),best:Math.max(...a),n:a.length}:null};
+  const practiceDays=new Set(ss.map(s=>new Date(s.date).toDateString())).size;
+  return{days,from,ss,per,practiceDays,
+    cp:{avg:avg(vals("cp")),best:vals("cp").length?Math.max(...vals("cp")):null,trend:firstLast("avgCp")},
+    mp:{avg:avg(vals("mp")),best:vals("mp").length?Math.max(...vals("mp")):null,trend:firstLast("bestMp")},
+    rec:{avg:avg(vals("rec")),trend:firstLast("avgRec")},
+    pulse:pulses.length?{avg:avg(pulses),min:Math.min(...pulses),max:Math.max(...pulses)}:null,
+    walking:stepAvg("walking"),energetic:stepAvg("energetic")};
+}
+function trendText(t,unit,lowerIsBetter){
+  if(!t||t.n<2)return"";
+  const d=Math.round(t.last-t.first);
+  if(d===0)return"steady at "+r0(t.last)+" "+unit;
+  const up=d>0,good=lowerIsBetter?!up:up;
+  return (up?"up":"down")+" "+Math.abs(d)+" "+unit+" from "+r0(t.first)+" to "+r0(t.last)+(good?"":"");
+}
+function summaryLines(R){
+  const L=[];
+  L.push(["Sessions",R.ss.length+" session"+(R.ss.length===1?"":"s")+" on "+R.practiceDays+" day"+(R.practiceDays===1?"":"s")]);
+  if(R.cp.avg!=null)L.push(["Control Pause","average "+r0(R.cp.avg)+" s, best "+r0(R.cp.best)+" s"+(R.cp.trend&&R.cp.trend.n>1?"; session average "+trendText(R.cp.trend,"s"):"")]);
+  if(R.mp.avg!=null)L.push(["Maximum Pause","average "+r0(R.mp.avg)+" s, best "+r0(R.mp.best)+" s"+(R.mp.trend&&R.mp.trend.n>1?"; session best "+trendText(R.mp.trend,"s"):"")]);
+  if(R.rec.avg!=null)L.push(["Recovery","average "+r0(R.rec.avg)+" s"+(R.rec.trend&&R.rec.trend.n>1?"; "+trendText(R.rec.trend,"s",true):"")]);
+  if(R.pulse)L.push(["Pulse","average "+r0(R.pulse.avg)+" bpm, range "+R.pulse.min+" to "+R.pulse.max]);
+  if(R.walking)L.push(["Walking steps","average "+r0(R.walking.avg)+", best "+R.walking.best+" (over "+R.walking.n+" MP"+(R.walking.n===1?"":"s")+")"]);
+  if(R.energetic)L.push(["Energetic steps","average "+r0(R.energetic.avg)+", best "+R.energetic.best+" (over "+R.energetic.n+" MP"+(R.energetic.n===1?"":"s")+")"]);
+  return L;
+}
+function stepLine(r){
+  if(r.type==="PULSE")return "Pulse check: "+r.bpm+" bpm";
+  const p=[];
+  if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");
+  if(r.stepType)p.push((r.steps==null?"":r.steps+" ")+STEPN[r.stepType].toLowerCase()+" steps");
+  if(r.rec!=null)p.push("recovery "+fmt(r.rec)+" s");
+  if(r.vsb!=null)p.push("VSB "+mmss(r.vsb));if(r.nsb!=null)p.push("NSB "+mmss(r.nsb));
+  return NAMES[r.type]+": "+p.join(", ");
+}
+function periodText(R){
+  if(!R.ss.length)return PERIOD[R.days];
+  const a=dlong(R.days?R.from:R.ss[0].date),b=dlong(R.days?new Date():R.ss[R.ss.length-1].date);
+  return PERIOD[R.days]+", "+a+" to "+b;
+}
+function reportTitle(){const n=$("repName").value.trim();return "Buteyko practice report"+(n?" for "+n:"")}
+function reportText(R){
+  const out=[reportTitle(),periodText(R),""];
+  if(!R.ss.length){out.push("No sessions in this period.");return out.join("\n")}
+  out.push("SUMMARY");
+  summaryLines(R).forEach(([k,v])=>out.push(k+": "+v));
+  out.push("","SESSIONS");
+  R.ss.slice().reverse().forEach(s=>{
+    out.push("",fdate(s.date));
+    let n=0;
+    s.results.forEach(r=>{out.push((r.type==="PULSE"?"  ":"  "+(++n)+". ")+stepLine(r))});
+    if(!s.results.some(r=>r.type==="PULSE")&&(s.pulseStart||s.pulseEnd))out.push("  Pulse: "+(s.pulseStart||"-")+" at start, "+(s.pulseEnd||"-")+" at end");
+    if(s.notes)out.push("  Notes: "+s.notes);
+  });
+  return out.join("\n");
+}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let lastReport=null;
+function buildReport(){
+  const R=reportData();lastReport=R;
+  const w=$("reportBody");
+  let h='<header class="rhead"><h2>'+esc(reportTitle())+'</h2><p>'+esc(periodText(R))+'</p></header>';
+  if(!R.ss.length){h+='<p class="emptystate">No sessions in this period. Try a longer period.</p>';w.innerHTML=h;return}
+  h+='<div class="rsum">'+summaryLines(R).map(([k,v])=>'<div><b>'+esc(k)+'</b><span>'+esc(v)+'</span></div>').join("")+'</div>';
+  if(R.per.length>1){
+    h+='<div class="rchart">'+chartSvg(R.per)+'<div class="legend"><span><i style="background:var(--cp)"></i>Average CP</span><span><i style="background:var(--mp)"></i>Best MP</span>'+(R.rec.avg!=null?'<span><i style="background:var(--rec)"></i>Average recovery</span>':'')+'</div></div>';
+  }
+  h+='<h3 class="rsec">Sessions</h3>';
+  R.ss.slice().reverse().forEach(s=>{
+    const st=stats(s);
+    const meta=[];if(st.avgCp!=null)meta.push("Avg CP "+r0(st.avgCp)+" s");if(st.bestMp!=null)meta.push("Best MP "+r0(st.bestMp)+" s");if(st.avgRec!=null)meta.push("Avg recovery "+r0(st.avgRec)+" s");
+    h+='<div class="rsess"><div class="rsh"><b>'+esc(fdate(s.date))+'</b><span>'+esc(meta.join(" | "))+'</span></div><ol>';
+    let hn=0;
+    s.results.forEach(r=>{h+=r.type==="PULSE"?'<li class="rp">'+esc(stepLine(r))+'</li>':'<li value="'+(++hn)+'">'+esc(stepLine(r))+'</li>'});
+    h+='</ol>';
+    if(!s.results.some(r=>r.type==="PULSE")&&(s.pulseStart||s.pulseEnd))h+='<p class="rnote">Pulse: '+esc((s.pulseStart||"-")+" at start, "+(s.pulseEnd||"-")+" at end")+'</p>';
+    if(s.notes)h+='<p class="rnote">Notes: '+esc(s.notes)+'</p>';
+    h+='</div>';
+  });
+  h+='<p class="rfoot">Made with Buteyko Practice on '+esc(dlong(new Date()))+'</p>';
+  w.innerHTML=h;
+}
+$("makeReport").onclick=()=>{
+  if(!log.length){toast("No sessions to report on yet");return}
+  buildReport();show("report");
+};
+$("repBack").onclick=()=>show("history");
+$("repPrint").onclick=()=>{try{window.print()}catch(e){toast("Printing isn't available here")}};
+$("repCopy").onclick=()=>{if(!lastReport)return;navigator.clipboard.writeText(reportText(lastReport)).then(()=>toast("Report copied. Paste it into an email or message."),()=>toast("Copy was blocked by the browser"))};
+$("repShare").hidden=!navigator.share;
+$("repShare").onclick=()=>{if(!lastReport)return;navigator.share({title:reportTitle(),text:reportText(lastReport)}).catch(()=>{})};
 
 /* ---------- Google Drive sync ---------- */
 const Sync=(()=>{
