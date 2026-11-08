@@ -19,7 +19,7 @@
 /* Layout: one calm column; a single big round button carries every hold. */
 :root{
   --bg:#EDF2F3; --surface:#FFFFFF; --ink:#1B2A2F; --muted:#5A6D73; --line:#D2DCDF;
-  --cp:#2E6E72; --cp-soft:#D9EAEA; --mp:#585DA6; --mp-soft:#E1E2F3; --warn:#9A4B3C; --rec:#A0672A; --rec-soft:#F3E6D6;
+  --cp:#2E6E72; --cp-soft:#D9EAEA; --mp:#585DA6; --mp-soft:#E1E2F3; --warn:#9A4B3C; --rec:#A0672A; --rec-soft:#F3E6D6; --pulse:#A3445E; --pulse-soft:#F4DEE4;
   --on-accent:#FFFFFF;
   --f-display:"Young Serif", Georgia, "Times New Roman", serif;
   --f-body:"Lexend", "Segoe UI", system-ui, sans-serif;
@@ -27,11 +27,11 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
-  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --on-accent:#0E181B;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --pulse:#EC91A8; --pulse-soft:#3D2129; --on-accent:#0E181B;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E181B; --surface:#16242A; --ink:#E2EBED; --muted:#8EA2A7; --line:#283A40;
-  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --on-accent:#0E181B;
+  --cp:#6BBDBA; --cp-soft:#1C3537; --mp:#A2A6EA; --mp-soft:#26284A; --warn:#E39383; --rec:#E0AE6E; --rec-soft:#3A2E1E; --pulse:#EC91A8; --pulse-soft:#3D2129; --on-accent:#0E181B;
   color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-weight:400}
@@ -90,6 +90,33 @@ textarea{min-height:70px;resize:vertical}
 .typename{font-family:var(--f-display);font-size:1.7rem}
 .typename.CP{color:var(--cp)} .typename.MP{color:var(--mp)} .typename.REC{color:var(--rec)}
 .big.rec{background:var(--rec)}
+.big.breath{background:var(--surface);color:var(--ink);border:2px solid var(--cp)}
+.big.pulse{background:var(--pulse)}
+.big:disabled{cursor:default}
+.big.pulse.holding{animation-name:breathe-pulse}
+@keyframes breathe-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pulse) 35%,transparent)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--pulse) 0%,transparent)}}
+.typename.PULSE{color:var(--pulse)} .typename.BR{color:var(--cp)}
+.timer.lead{color:var(--pulse)}
+.stepsbox{display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;width:100%;max-width:440px}
+.stepsq{font-size:.92rem;color:var(--muted)}
+.seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.seg button{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--mp);border-color:var(--mp);color:var(--on-accent)}
+.stepcount{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.88rem;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;width:44px;height:44px;cursor:pointer;font-size:.9rem;font-variant-numeric:tabular-nums}
+.stepper input{width:4.5em;font-size:1.4rem;text-align:center;font-variant-numeric:tabular-nums}
+.donesteps{display:flex;flex-direction:column;gap:10px}
+.donesteps .dsrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.donesteps .dsrow b{min-width:4.5em;font-weight:500}
+.donesteps select,.donesteps input{width:auto}
+.donesteps input{width:6em}
+.pulsebox{display:flex;flex-direction:column;align-items:center;gap:6px}
+.pulsebox input{font-size:2rem;width:5em;text-align:center;font-variant-numeric:tabular-nums}
+.pulsev{color:var(--pulse);font-weight:500;text-align:left!important}
+.hold.PULSE{background:var(--pulse-soft);color:var(--pulse)}
+.dot.PULSE.done,.dot.PULSE.now{background:var(--pulse)}
+.add-pulse{border-color:var(--pulse);color:var(--pulse)}
 .recv{color:var(--rec);font-weight:500}
 .instr{color:var(--muted);max-width:44ch;margin:0;min-height:3em}
 .timer{font-size:clamp(4.5rem,18vw,7.5rem);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -131,6 +158,7 @@ td.num,th.num{text-align:right}
 .sess .date{font-weight:500}
 .sess .meta{font-size:.85rem;color:var(--muted)}
 .sess .holds{display:flex;gap:6px;flex-wrap:wrap}
+.sess .holds span.pchip{color:var(--pulse)}
 .sess .holds span{font-size:.82rem;padding:2px 8px;border-radius:6px;background:var(--bg);font-variant-numeric:tabular-nums}
 .sess .note{font-size:.88rem;color:var(--muted);font-style:italic}
 .sess .acts{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
@@ -138,6 +166,9 @@ td.num,th.num{text-align:right}
 .edtable td{padding:6px}
 .edtable input,.edtable select{width:5.5em;padding:6px 8px;background:var(--surface)}
 .edtable input:disabled{opacity:.35}
+.edtable .edsteps{white-space:nowrap}
+.edtable .edsteps select{width:auto}
+.edtable .edsteps input{width:4.5em;margin-left:4px}
 .sess.editing input,.sess.editing textarea{background:var(--surface)}
 .err{color:var(--warn);margin:0;font-size:.9rem}
 .backupinfo{margin:0;font-size:.9rem}
@@ -193,6 +224,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
       <button class="chipbtn add-cp" data-add="CP">+ Control Pause</button>
       <button class="chipbtn add-mp" data-add="MP">+ Maximum Pause</button>
       <button class="chipbtn add-cpmp" data-add="CPMP">+ CP then MP</button>
+      <button class="chipbtn add-pulse" data-add="PULSE">+ Pulse check (30 s)</button>
       <button class="linkbtn" id="clearSeq">Clear</button>
     </div>
   </div>
@@ -200,17 +232,17 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   <div class="panel">
     <h3>Between holds</h3>
     <div class="grid2">
-      <label class="field">Rest time
-        <select id="rest">
-          <option value="0">No timer, I'll press Next</option>
-          <option value="30">30 seconds</option>
-          <option value="60">1 minute</option>
-          <option value="90">1 minute 30</option>
-          <option value="120">2 minutes</option>
+      <label class="field">Very shallow breathing
+        <select id="vsb">
           <option value="180">3 minutes</option>
+          <option value="210">3 minutes 30</option>
+          <option value="240">4 minutes</option>
+          <option value="270">4 minutes 30</option>
           <option value="300">5 minutes</option>
+          <option value="0">Off</option>
         </select>
       </label>
+      <label class="check"><input type="checkbox" id="nsb" checked> Then normalised shallow breathing, timed until I press Done</label>
       <label class="check"><input type="checkbox" id="sound" checked> Soft chimes</label>
     </div>
   </div>
@@ -219,6 +251,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <h3>Options</h3>
     <div class="grid2">
       <label class="check"><input type="checkbox" id="recovery"> Time my recovery after each MP</label>
+      <label class="check"><input type="checkbox" id="steps"> Ask about walking or energetic steps after each MP</label>
       <label class="field">Call out the seconds during holds
         <select id="voice">
           <option value="0">Off</option>
@@ -241,6 +274,10 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div><b>Maximum Pause (MP)</b>Hold past the first urge to a moderate, comfortable limit.</div>
     <div><b>CP then MP</b>One hold. Tap at the first urge to log the CP, the timer keeps going, tap again to finish the MP.</div>
     <div><b>Recovery</b>After an MP, gentle shallow breathing until your breathing settles. Tap Recovered when it has. This should get shorter with practice.</div>
+    <div><b>Very Shallow Breathing (VSB)</b>Very rapid, very shallow breathing for 3 to 5 minutes, counted down.</div>
+    <div><b>Normalised Shallow Breathing (NSB)</b>Breathing settles back to gentle shallow breaths. The timer counts up until you press Done.</div>
+    <div><b>Steps</b>During an MP you can walk or do energetic steps. After the hold, while you recover and breathe, pick which you did and enter the number of steps.</div>
+    <div><b>Pulse check</b>A 5 second countdown, then 30 seconds to count your heartbeats. The app doubles it to beats per minute.</div>
   </div>
 </section>
 
@@ -256,11 +293,29 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   <div class="timer" id="timer">0<small>s</small></div>
   <div class="marked" id="marked"></div>
   <svg class="scale" id="scale" viewBox="0 0 560 46" role="img" aria-label="Hold time scale"></svg>
+  <div class="pulsebox" id="pulseBox" hidden>
+    <label class="field" for="pulseBeats">Beats in 30 seconds</label>
+    <input type="number" id="pulseBeats" min="10" max="120" inputmode="numeric" autocomplete="off">
+    <span class="hint" id="pulseCalc"></span>
+    <span class="err" id="pulseErr" hidden>Enter the number of beats you counted, between 10 and 120.</span>
+  </div>
   <button class="big" id="big">Start</button>
+  <div class="stepsbox" id="stepsBox" hidden>
+    <span class="stepsq">During that MP, did you do steps?</span>
+    <div class="seg" role="group" aria-label="Type of steps">
+      <button type="button" data-st="walking">Walking steps</button>
+      <button type="button" data-st="energetic">Energetic steps</button>
+      <button type="button" data-st="none">No steps</button>
+    </div>
+    <label class="stepcount" id="stepCountWrap">Number of steps
+      <span class="stepper"><button type="button" id="stepMinus" aria-label="5 fewer steps">-5</button><input type="number" id="stepCount" min="0" max="999" inputmode="numeric" autocomplete="off"><button type="button" id="stepPlus" aria-label="5 more steps">+5</button></span>
+    </label>
+  </div>
   <p class="hint" id="keyhint">Space bar works too. Esc cancels a hold.</p>
   <div class="minor">
     <button class="ghost" id="cancelHold" hidden>Cancel this hold</button>
-    <button class="ghost" id="redoLast" hidden>Redo last hold</button>
+    <button class="ghost" id="skipPulse" hidden>Skip pulse check</button>
+    <button class="ghost" id="redoLast" hidden>Redo last step</button>
   </div>
 </section>
 
@@ -270,9 +325,13 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   <div class="panel">
     <div class="tablewrap"><table id="doneTable"></table></div>
   </div>
+  <div class="panel" id="doneStepsPanel" hidden>
+    <h3>Steps during each MP</h3>
+    <div class="donesteps" id="doneSteps"></div>
+  </div>
   <div class="panel">
     <h3>Optional</h3>
-    <div class="grid2">
+    <div class="grid2" id="manualPulse">
       <label class="field">Pulse at start (bpm)<input type="number" id="pulseStart" min="30" max="200" inputmode="numeric"></label>
       <label class="field">Pulse at end (bpm)<input type="number" id="pulseEnd" min="30" max="200" inputmode="numeric"></label>
     </div>
@@ -321,11 +380,12 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
 
 <script>
 (function(){
-const NAMES={CP:"Control Pause",MP:"Maximum Pause",CPMP:"CP then MP"};
-const SHORT={CP:"CP",MP:"MP",CPMP:"CP+MP"};
+const NAMES={CP:"Control Pause",MP:"Maximum Pause",CPMP:"CP then MP",PULSE:"Pulse check"};
+const SHORT={CP:"CP",MP:"MP",CPMP:"CP+MP",PULSE:"Pulse"};
 const PRESETS=[
   {label:"3 x CP",seq:["CP","CP","CP"]},
   {label:"3 x CP then MP",seq:["CPMP","CPMP","CPMP"]},
+  {label:"Pulse, 3 x CP then MP, pulse",seq:["PULSE","CPMP","CPMP","CPMP","PULSE"]},
   {label:"CP, CP, MP",seq:["CP","CP","MP"]},
   {label:"CP then MP once",seq:["CPMP"]},
   {label:"4 x CP",seq:["CP","CP","CP","CP"]}
@@ -336,7 +396,9 @@ const $=id=>document.getElementById(id);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 
-let settings=Object.assign({seq:["CPMP","CPMP","CPMP"],rest:60,sound:true,recovery:false,voice:0},load(LS_SET,{}));
+let settings=Object.assign({seq:["CPMP","CPMP","CPMP"],vsb:180,nsb:true,sound:true,recovery:false,voice:0,steps:true},load(LS_SET,{}));
+if(![0,180,210,240,270,300].includes(+settings.vsb))settings.vsb=180;
+delete settings.rest;
 let store=load(LS_LOG,[]);
 if(!Array.isArray(store))store=[];
 let log=[];
@@ -429,10 +491,14 @@ document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>{
   settings.seq.push(b.dataset.add);persist();renderSeq();
 });
 $("clearSeq").onclick=()=>{settings.seq=[];persist();renderSeq()};
-$("rest").value=String(settings.rest);
-$("rest").onchange=e=>{settings.rest=+e.target.value;persist()};
+$("vsb").value=String(settings.vsb);
+$("vsb").onchange=e=>{settings.vsb=+e.target.value;persist()};
+$("nsb").checked=!!settings.nsb;
+$("nsb").onchange=e=>{settings.nsb=e.target.checked;persist()};
 $("sound").checked=settings.sound;
 $("sound").onchange=e=>{settings.sound=e.target.checked;persist()};
+$("steps").checked=!!settings.steps;
+$("steps").onchange=e=>{settings.steps=e.target.checked;persist()};
 $("recovery").checked=!!settings.recovery;
 $("recovery").onchange=e=>{settings.recovery=e.target.checked;persist()};
 $("voice").value=String(settings.voice||0);
@@ -460,22 +526,30 @@ function renderSeq(){
 renderSeq();
 
 /* ---------- Run ---------- */
-let run=null, pending=null, raf=0, restTimer=0;
+// Every step in the sequence adds exactly one entry to run.results, so Redo can step back cleanly.
+let run=null, pending=null, raf=0, tickT=0;
+const PULSE_LEAD=5, PULSE_LEN=30;
 $("startSession").onclick=()=>{
   if(!settings.seq.length)return;
-  run={seq:settings.seq.slice(),idx:0,phase:"ready",t0:0,cp:null,results:[],restEnd:0,spoken:0,started:new Date().toISOString(),recovery:!!settings.recovery,voice:+settings.voice||0};
+  run={seq:settings.seq.slice(),idx:0,phase:"ready",t0:0,cp:null,results:[],spoken:0,lastBeep:-1,started:new Date().toISOString(),
+    recovery:!!settings.recovery,steps:!!settings.steps,voice:+settings.voice||0,vsb:+settings.vsb||0,nsb:!!settings.nsb};
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}
   keepAwake(true);show("run");renderRun();
 };
 
 function elapsed(){return (performance.now()-run.t0)/1000}
 function fmt(s){return s==null?"-":String(Math.round(s))}
+function mmss(s){if(s==null)return"-";s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+const isHoldPhase=p=>p==="holding"||p==="holdingMP";
+const lastResult=()=>run.results[run.results.length-1];
+const curType=()=>run.seq[Math.min(run.idx,run.seq.length-1)];
 
 function primary(){
   if(!run)return;
   const type=run.seq[run.idx];
   if(run.phase==="ready"){
-    run.t0=performance.now();run.cp=null;run.spoken=0;run.phase="holding";unlockVoice();SND.start();loop();
+    if(type==="PULSE"){run.t0=performance.now();run.lastBeep=-1;run.phase="pulseLead";unlockVoice();tick()}
+    else{run.t0=performance.now();run.cp=null;run.spoken=0;run.phase="holding";unlockVoice();SND.start();loop()}
   }else if(run.phase==="holding"){
     const e=elapsed();
     if(type==="CP"){finishHold({type,cp:e,mp:null})}
@@ -484,14 +558,21 @@ function primary(){
   }else if(run.phase==="holdingMP"){
     finishHold({type,cp:run.cp,mp:elapsed()});
   }else if(run.phase==="recovery"){
-    const last=run.results[run.results.length-1];
-    if(last)last.rec=Math.round(elapsed()*10)/10;
-    cancelAnimationFrame(raf);SND.mark();afterHold();
-  }else if(run.phase==="rest"){
-    endRest(false);
+    const last=lastResult();if(last)last.rec=Math.round(elapsed()*10)/10;
+    cancelAnimationFrame(raf);SND.mark();afterRecovery();
+  }else if(run.phase==="vsb"){
+    endVsb(false);
+  }else if(run.phase==="nsb"){
+    endNsb();
+  }else if(run.phase==="pulseEntry"){
+    savePulse();return;
+  }else if(run.phase==="pulseLead"||run.phase==="pulseCount"){
+    return; // the button is inactive while counting
   }
   if(run)renderRun();
 }
+
+/* Holds */
 function finishHold(r){
   cancelAnimationFrame(raf);
   r.cp=r.cp==null?null:Math.round(r.cp*10)/10;
@@ -499,38 +580,82 @@ function finishHold(r){
   run.results.push(r);run.idx++;SND.stop();
   if(canSpeak&&run.voice)try{speechSynthesis.cancel()}catch(e){}
   if(run.recovery&&r.mp!=null){run.phase="recovery";run.t0=performance.now();loop();return}
-  afterHold();
+  afterRecovery();
 }
-function afterHold(){
+function afterRecovery(){
+  // Breathing phases come between holds, not after the final step.
   if(run.idx>=run.seq.length){finishSession();return}
-  if(settings.rest>0){
-    run.phase="rest";run.restEnd=performance.now()+settings.rest*1000;
-    restTick();
-  }else run.phase="ready";
+  if(run.vsb>0){run.phase="vsb";run.t0=performance.now();tick();return}
+  startNsbOrNext();
 }
-function restTick(){
-  clearTimeout(restTimer);
-  if(!run||run.phase!=="rest")return;
-  const left=(run.restEnd-performance.now())/1000;
-  if(left<=0){endRest(true);return}
-  $("timer").innerHTML=Math.ceil(left)+"<small>s</small>";
-  restTimer=setTimeout(restTick,200);
+function startNsbOrNext(){
+  if(run.nsb){run.phase="nsb";run.t0=performance.now();tick()}
+  else run.phase="ready";
 }
-function endRest(chime){
-  clearTimeout(restTimer);
+function endVsb(chime){
+  clearTimeout(tickT);
+  const last=lastResult();if(last&&last.type!=="PULSE")last.vsb=Math.round(Math.min(elapsed(),run.vsb));
+  if(chime)SND.restEnd();
+  startNsbOrNext();renderRun();
+}
+function endNsb(){
+  clearTimeout(tickT);
+  const last=lastResult();if(last&&last.type!=="PULSE")last.nsb=Math.round(elapsed());
+  SND.mark();run.phase="ready";
+}
+
+/* Pulse check: 5 second lead-in counting down, then 30 seconds counting up */
+function savePulse(){
+  const inp=$("pulseBeats"),v=parseInt(inp.value,10);
+  if(isNaN(v)||v<10||v>120){$("pulseErr").hidden=false;inp.focus();return}
+  run.results.push({type:"PULSE",beats:v,bpm:v*2});run.idx++;
+  run.phase="ready";
+  if(run.idx>=run.seq.length){finishSession();return}
+  renderRun();
+}
+function skipPulse(){
+  clearTimeout(tickT);
+  run.results.push({type:"PULSE",beats:null,bpm:null});run.idx++;run.phase="ready";
+  if(run.idx>=run.seq.length){finishSession();return}
+  renderRun();
+}
+
+/* Timers for the non-hold phases */
+function tick(){
+  clearTimeout(tickT);
   if(!run)return;
-  run.phase="ready";if(chime)SND.restEnd();renderRun();
+  const e=elapsed(),tm=$("timer");
+  if(run.phase==="pulseLead"){
+    const left=Math.max(0,PULSE_LEAD-Math.floor(e));
+    tm.innerHTML=left+"";
+    if(left!==run.lastBeep){run.lastBeep=left;if(left>0)tone([440],0.25)}
+    if(e>=PULSE_LEAD){run.phase="pulseCount";run.t0=performance.now();run.lastBeep=-1;SND.start();renderRun()}
+  }else if(run.phase==="pulseCount"){
+    const n=Math.min(PULSE_LEN,Math.floor(e));
+    tm.innerHTML=n+"";
+    if(e>=PULSE_LEN){SND.stop();run.phase="pulseEntry";renderRun();return}
+  }else if(run.phase==="vsb"){
+    const left=run.vsb-e;
+    if(left<=0){endVsb(true);return}
+    tm.innerHTML=mmss(Math.ceil(left));
+  }else if(run.phase==="nsb"){
+    tm.innerHTML=mmss(Math.floor(e));
+  }else return;
+  tickT=setTimeout(tick,100);
 }
+
 function cancelHold(){
-  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"))return;
+  if(!run)return;
+  if(run.phase==="pulseLead"||run.phase==="pulseCount"){clearTimeout(tickT);run.phase="ready";renderRun();return}
+  if(!isHoldPhase(run.phase))return;
   cancelAnimationFrame(raf);run.phase="ready";run.cp=null;renderRun();
 }
 function redoLast(){
-  if(!run||!run.results.length||run.phase==="holding"||run.phase==="holdingMP")return;
-  clearTimeout(restTimer);cancelAnimationFrame(raf);run.results.pop();run.idx--;run.phase="ready";renderRun();
+  if(!run||!run.results.length||isHoldPhase(run.phase)||run.phase==="pulseLead"||run.phase==="pulseCount")return;
+  clearTimeout(tickT);cancelAnimationFrame(raf);run.results.pop();run.idx--;run.phase="ready";renderRun();
 }
 function loop(){
-  if(!run||(run.phase!=="holding"&&run.phase!=="holdingMP"&&run.phase!=="recovery"))return;
+  if(!run||(!isHoldPhase(run.phase)&&run.phase!=="recovery"))return;
   const e=elapsed();
   $("timer").innerHTML=Math.floor(e)+"<small>s</small>";
   if(run.phase==="recovery"){raf=requestAnimationFrame(loop);return}
@@ -539,50 +664,100 @@ function loop(){
   raf=requestAnimationFrame(loop);
 }
 
+function stepLabel(){
+  const n=run.seq.length, holdsTotal=run.seq.filter(t=>t!=="PULSE").length;
+  const holdNo=i=>run.seq.slice(0,i+1).filter(t=>t!=="PULSE").length;
+  const p=run.phase;
+  if(p==="recovery"||p==="vsb"||p==="nsb")return "After hold "+holdNo(run.idx-1)+" of "+holdsTotal;
+  if(run.seq[run.idx]==="PULSE")return "Step "+(run.idx+1)+" of "+n;
+  return "Hold "+holdNo(run.idx)+" of "+holdsTotal;
+}
+
 function renderRun(){
   if(!run)return;
-  const n=run.seq.length, type=run.seq[Math.min(run.idx,n-1)];
-  $("stepLabel").textContent=run.phase==="rest"?("Rest before hold "+(run.idx+1)+" of "+n):run.phase==="recovery"?("Recovery after hold "+run.idx+" of "+n):("Hold "+(run.idx+1)+" of "+n);
+  const type=curType(), p=run.phase;
+  $("stepLabel").textContent=stepLabel();
   const dots=$("dots");dots.innerHTML="";
-  run.seq.forEach((t,i)=>{const d=document.createElement("span");d.className="dot "+t+(i<run.idx?" done":"")+(i===run.idx&&run.phase!=="rest"&&run.phase!=="recovery"?" now":"");d.title=NAMES[t];dots.appendChild(d)});
+  const between=p==="recovery"||p==="vsb"||p==="nsb";
+  run.seq.forEach((t,i)=>{const d=document.createElement("span");d.className="dot "+t+(i<run.idx?" done":"")+(i===run.idx&&!between?" now":"");d.title=NAMES[t];dots.appendChild(d)});
   const tn=$("typeName"), big=$("big"), ins=$("instr"), mk=$("marked"), tm=$("timer");
-  tn.className="typename "+(run.phase==="recovery"?"REC":type==="MP"?"MP":"CP");
-  tn.textContent=run.phase==="rest"?"Rest":run.phase==="recovery"?"Recovery":NAMES[type];
-  big.className="big";tm.className="timer";
-  $("cancelHold").hidden=!(run.phase==="holding"||run.phase==="holdingMP");
-  $("redoLast").hidden=!(run.results.length&&(run.phase==="ready"||run.phase==="rest"||run.phase==="recovery"));
-  const last=run.results[run.results.length-1];
-  if(run.phase==="ready"){
-    tm.innerHTML="0<small>s</small>";
-    ins.textContent="Sit tall and relaxed. Breathe out normally, pinch your nose, then press Start.";
-    big.textContent="Start";if(type==="MP")big.classList.add("mp");
-    mk.textContent=last?("Last hold: "+resultText(last)):"";
-    drawScale(0,null);
-  }else if(run.phase==="holding"){
+  const titles={recovery:"Recovery",vsb:"Very Shallow Breathing",nsb:"Normalised Shallow Breathing"};
+  tn.textContent=titles[p]||NAMES[type];
+  tn.className="typename "+(p==="recovery"?"REC":p==="vsb"||p==="nsb"?"BR":type==="PULSE"?"PULSE":type==="MP"?"MP":"CP");
+  big.className="big";tm.className="timer";big.disabled=false;
+  $("scale").style.display=(type!=="PULSE"&&(p==="ready"||isHoldPhase(p)))?"":"none";
+  $("pulseBox").hidden=p!=="pulseEntry";
+  $("cancelHold").hidden=!(isHoldPhase(p)||p==="pulseLead"||p==="pulseCount");
+  $("cancelHold").textContent=type==="PULSE"&&!isHoldPhase(p)?"Restart pulse check":"Cancel this hold";
+  $("skipPulse").hidden=!(type==="PULSE"&&(p==="ready"||p==="pulseEntry"));
+  $("redoLast").hidden=!(run.results.length&&(p==="ready"||between||p==="pulseEntry"));
+  $("keyhint").hidden=p==="pulseEntry";
+  paintSteps();
+  const last=lastResult();
+  if(p==="ready"){
+    if(type==="PULSE"){
+      tm.innerHTML="30<small>s</small>";
+      ins.textContent="Find your pulse at your wrist or neck. Press Start, wait for the 5 second countdown, then count the beats until the timer reaches 30.";
+      big.textContent="Start";big.classList.add("pulse");
+      mk.textContent="";
+    }else{
+      tm.innerHTML="0<small>s</small>";
+      ins.textContent="Sit tall and relaxed. Breathe out normally, pinch your nose, then press Start.";
+      big.textContent="Start";if(type==="MP")big.classList.add("mp");
+      mk.textContent=last&&last.type!=="PULSE"?("Last hold: "+resultText(last)):"";
+      drawScale(0,null);
+    }
+  }else if(p==="holding"){
     big.classList.add("holding");if(type==="MP")big.classList.add("mp");
     if(type==="CP"){ins.textContent="Press at the first definite urge to breathe.";big.textContent="First urge"}
     else if(type==="MP"){ins.textContent="Press when you reach your maximum. Stay relaxed.";big.textContent="Stop"}
     else{ins.textContent="Press at the first urge to log your CP. The timer keeps going.";big.textContent="First urge (CP)"}
     mk.textContent="";
-  }else if(run.phase==="holdingMP"){
+  }else if(p==="holdingMP"){
     big.classList.add("holding","mp");big.textContent="Stop (MP)";
     ins.textContent="Keep going to your maximum, then press Stop.";
     mk.textContent="CP logged at "+fmt(run.cp)+" s";
-  }else if(run.phase==="recovery"){
+  }else if(p==="recovery"){
     big.classList.add("rec");big.textContent="Recovered";
     ins.textContent="Shallow, gentle breaths through your nose. Press Recovered when your breathing has settled.";
     mk.textContent=last?("Logged: "+resultText(last)):"";
-    $("timer").innerHTML=Math.floor(elapsed())+"<small>s</small>";
-    drawScale(null,null);
-  }else if(run.phase==="rest"){
-    big.classList.add("rest");big.textContent="Skip rest";tm.classList.add("rest");
-    ins.textContent="Breathe gently through your nose. Small, calm breaths.";
+    tm.innerHTML=Math.floor(elapsed())+"<small>s</small>";
+  }else if(p==="vsb"){
+    big.classList.add("breath");big.textContent="Finish early";tm.classList.add("long");
+    ins.textContent="Very rapid, very shallow breaths through your nose. Keep going until the timer ends.";
     mk.textContent=last?("Logged: "+resultText(last)):"";
-    drawScale(null,null);restTick();
+    tick();
+  }else if(p==="nsb"){
+    big.classList.add("breath");big.textContent="Done";tm.classList.add("long");
+    ins.textContent="Let your breathing settle into normal, gentle shallow breaths. Press Done when you're ready for the next hold.";
+    mk.textContent=last?("Logged: "+resultText(last)):"";
+    tick();
+  }else if(p==="pulseLead"){
+    big.classList.add("pulse","holding");big.textContent="Get ready";big.disabled=true;
+    ins.textContent="Get ready to count. Start counting when the timer reaches 0.";
+    mk.textContent="";tm.classList.add("lead");
+    tick();
+  }else if(p==="pulseCount"){
+    big.classList.add("pulse","holding");big.textContent="Counting";big.disabled=true;
+    ins.textContent="Count your heartbeats. Stop when the timer reaches 30.";
+    mk.textContent="";
+    tick();
+  }else if(p==="pulseEntry"){
+    tm.innerHTML="30<small>s</small>";
+    big.classList.add("pulse");big.textContent="Save pulse";
+    ins.textContent="How many beats did you count?";
+    mk.textContent="";
+    const inp=$("pulseBeats");inp.value="";$("pulseErr").hidden=true;$("pulseCalc").textContent="";
+    setTimeout(()=>{try{inp.focus()}catch(e){}},50);
   }
 }
+const STEPN={walking:"Walking",energetic:"Energetic"};
 function resultText(r){
-  const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");if(r.rec!=null)p.push("Recovery "+fmt(r.rec)+" s");return p.join(", ");
+  if(r.type==="PULSE")return r.bpm==null?"Pulse skipped":"Pulse "+r.bpm+" bpm";
+  const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");if(r.rec!=null)p.push("Recovery "+fmt(r.rec)+" s");
+  if(r.stepType)p.push(STEPN[r.stepType]+" "+(r.steps==null?"":r.steps+" ")+"steps");
+  if(r.vsb!=null)p.push("VSB "+mmss(r.vsb));if(r.nsb!=null)p.push("NSB "+mmss(r.nsb));
+  return p.join(", ");
 }
 
 /* Scale: CP bands used in Buteyko teaching */
@@ -603,6 +778,7 @@ function drawScale(e,cp){
 document.addEventListener("keydown",ev=>{
   if(!run||$("v-run").hidden)return;
   const tag=(ev.target.tagName||"").toLowerCase();
+  if(ev.target.id==="pulseBeats"){if(ev.code==="Enter"||ev.code==="NumpadEnter"){ev.preventDefault();savePulse()}return}
   if(tag==="input"||tag==="textarea"||tag==="select")return;
   if(tag==="button"&&ev.target.id!=="big"&&ev.code!=="Escape")return;
   if(ev.code==="Space"||ev.code==="Enter"){ev.preventDefault();if(!ev.repeat)primary()}
@@ -611,26 +787,81 @@ document.addEventListener("keydown",ev=>{
 $("big").addEventListener("click",ev=>{ev.preventDefault();if(ev.detail===0)return;primary()});
 $("cancelHold").onclick=cancelHold;
 $("redoLast").onclick=redoLast;
+$("skipPulse").onclick=skipPulse;
+function stepsTarget(){if(!run)return null;const l=lastResult();return l&&l.type!=="PULSE"&&l.mp!=null?l:null}
+function paintSteps(){
+  const t=stepsTarget(),box=$("stepsBox");
+  const between=run&&(run.phase==="recovery"||run.phase==="vsb"||run.phase==="nsb");
+  box.hidden=!(run&&run.steps&&between&&t);
+  if(box.hidden)return;
+  const st=t.stepType===undefined?null:t.stepType;
+  box.querySelectorAll("[data-st]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.st===(st||(t.stepsAnswered?"none":"")))));
+  $("stepCountWrap").hidden=!(st==="walking"||st==="energetic");
+  const inp=$("stepCount");if(document.activeElement!==inp)inp.value=t.steps==null?"":t.steps;
+}
+document.querySelectorAll("#stepsBox [data-st]").forEach(b=>b.onclick=()=>{
+  const t=stepsTarget();if(!t)return;
+  t.stepsAnswered=true;
+  if(b.dataset.st==="none"){t.stepType=null;t.steps=null}
+  else{t.stepType=b.dataset.st;run.lastStepType=b.dataset.st}
+  paintSteps();
+  if(t.stepType)setTimeout(()=>{try{$("stepCount").focus()}catch(e){}},30);
+});
+$("stepCount").oninput=e=>{const t=stepsTarget();if(!t)return;const v=parseInt(e.target.value,10);t.steps=isNaN(v)?null:Math.max(0,v)};
+const bump=d=>{const t=stepsTarget();if(!t)return;t.steps=Math.max(0,(t.steps||0)+d);$("stepCount").value=t.steps};
+$("stepMinus").onclick=()=>bump(-5);$("stepPlus").onclick=()=>bump(5);
+$("pulseBeats").oninput=e=>{const v=parseInt(e.target.value,10);$("pulseErr").hidden=true;$("pulseCalc").textContent=isNaN(v)?"":"= "+(v*2)+" beats per minute"};
 $("endEarly").onclick=()=>{
-  if(!run)return;cancelAnimationFrame(raf);clearTimeout(restTimer);
-  if(run.phase==="recovery"){const last=run.results[run.results.length-1];if(last)last.rec=Math.round(elapsed()*10)/10}
+  if(!run)return;cancelAnimationFrame(raf);clearTimeout(tickT);
+  const last=lastResult();
+  if(last&&last.type!=="PULSE"){
+    if(run.phase==="recovery")last.rec=Math.round(elapsed()*10)/10;
+    if(run.phase==="vsb")last.vsb=Math.round(Math.min(elapsed(),run.vsb));
+    if(run.phase==="nsb")last.nsb=Math.round(elapsed());
+  }
   if(canSpeak)try{speechSynthesis.cancel()}catch(e){}
   if(run.results.length)finishSession();else{run=null;keepAwake(false);show("setup")}
 };
 
 /* ---------- Done ---------- */
 function finishSession(){
-  pending={id:Date.now().toString(36),date:run.started,results:run.results.slice(),planned:run.seq.slice()};
+  pending={id:Date.now().toString(36),date:run.started,results:run.results.filter(r=>!(r.type==="PULSE"&&r.bpm==null)),planned:run.seq.slice()};
+  doneAskSteps=run.steps;
   run=null;keepAwake(false);
   $("pulseStart").value="";$("pulseEnd").value="";$("notes").value="";
-  resetDiscard();renderDone();show("done");
+  $("manualPulse").hidden=pending.results.some(r=>r.type==="PULSE");
+  resetDiscard();renderDone();renderDoneSteps();show("done");
+}
+let doneAskSteps=false;
+function stepsRowHtml(id,r){
+  const st=r.stepType||"";
+  return '<select id="'+id+'t" aria-label="Type of steps"><option value=""'+(st?"":" selected")+'>No steps</option><option value="walking"'+(st==="walking"?" selected":"")+'>Walking steps</option><option value="energetic"'+(st==="energetic"?" selected":"")+'>Energetic steps</option></select>'+
+    '<input type="number" min="0" max="999" inputmode="numeric" id="'+id+'n" aria-label="Number of steps" placeholder="Steps" value="'+(r.steps==null?"":r.steps)+'"'+(st?"":" disabled")+'>';
+}
+function renderDoneSteps(){
+  const holds=pending.results.map((r,i)=>[r,i]).filter(([r])=>r.type!=="PULSE"&&r.mp!=null);
+  const show=holds.length&&(doneAskSteps||holds.some(([r])=>r.stepType));
+  $("doneStepsPanel").hidden=!show;if(!show)return;
+  const w=$("doneSteps");w.innerHTML="";
+  holds.forEach(([r,i])=>{
+    const row=document.createElement("div");row.className="dsrow";
+    row.innerHTML='<b>Step '+(i+1)+'</b>'+stepsRowHtml("ds"+i,r);
+    const sel=row.querySelector("select"),num=row.querySelector("input");
+    sel.onchange=()=>{r.stepType=sel.value||null;num.disabled=!r.stepType;if(!r.stepType){r.steps=null;num.value=""}else num.focus();renderDone()};
+    num.oninput=()=>{const v=parseInt(num.value,10);r.steps=isNaN(v)?null:Math.max(0,v);renderDone()};
+    w.appendChild(row);
+  });
 }
 function renderDone(){
-  const hasRec=pending.results.some(r=>r.rec!=null);
-  let h='<tr><th>#</th><th>Hold</th><th class="num">CP (s)</th><th class="num">MP (s)</th>'+(hasRec?'<th class="num">Recovery (s)</th>':'')+'</tr>';
-  pending.results.forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td><td>'+NAMES[r.type]+'</td><td class="num cpv">'+fmt(r.cp)+'</td><td class="num mpv">'+fmt(r.mp)+'</td>'+(hasRec?'<td class="num recv">'+fmt(r.rec)+'</td>':'')+'</tr>'});
-  const s=stats(pending);
-  h+='<tr><td></td><td><b>Average / best</b></td><td class="num cpv">'+(s.avgCp==null?"-":s.avgCp.toFixed(0))+'</td><td class="num mpv">'+fmt(s.bestMp)+'</td>'+(hasRec?'<td class="num recv">'+(s.avgRec==null?"-":s.avgRec.toFixed(0))+'</td>':'')+'</tr>';
+  const R=pending.results, has=k=>R.some(r=>r[k]!=null);
+  const cols=[["cp","CP (s)","cpv",fmt],["mp","MP (s)","mpv",fmt],["rec","Recovery (s)","recv",fmt],["steps","Steps","",(v,r)=>r&&r.stepType?STEPN[r.stepType]+(v==null?"":" "+v):"-"],["vsb","VSB","",mmss],["nsb","NSB","",mmss]].filter(c=>c[0]==="cp"||c[0]==="mp"||(c[0]==="steps"?R.some(r=>r.stepType):has(c[0])));
+  let h='<tr><th>#</th><th>Step</th>'+cols.map(c=>'<th class="num">'+c[1]+'</th>').join("")+'</tr>';
+  R.forEach((r,i)=>{
+    if(r.type==="PULSE"){h+='<tr><td>'+(i+1)+'</td><td>Pulse check</td><td class="num pulsev" colspan="'+cols.length+'">'+r.bpm+' bpm <span class="hint">('+r.beats+' in 30 s)</span></td></tr>';return}
+    h+='<tr><td>'+(i+1)+'</td><td>'+NAMES[r.type]+'</td>'+cols.map(c=>'<td class="num '+c[2]+'">'+c[3](r[c[0]],r)+'</td>').join("")+'</tr>';
+  });
+  const s=stats(pending),sum={cp:s.avgCp==null?"-":s.avgCp.toFixed(0),mp:fmt(s.bestMp),rec:s.avgRec==null?"-":s.avgRec.toFixed(0),vsb:"",nsb:"",steps:""};
+  h+='<tr><td></td><td><b>Average / best</b></td>'+cols.map(c=>'<td class="num '+c[2]+'">'+sum[c[0]]+'</td>').join("")+'</tr>';
   $("doneTable").innerHTML=h;
 }
 $("saveSession").onclick=()=>{
@@ -638,6 +869,7 @@ $("saveSession").onclick=()=>{
   const ps=parseInt($("pulseStart").value,10),pe=parseInt($("pulseEnd").value,10);
   pending.pulseStart=isNaN(ps)?null:ps;pending.pulseEnd=isNaN(pe)?null:pe;
   pending.notes=$("notes").value.trim();
+  pending.results.forEach(r=>{delete r.stepsAnswered});
   upsert(pending);pending=null;
   toast(commit(true)?"Saved to history":"Saved for now, but this browser is blocking storage");
   show("history");
@@ -675,9 +907,11 @@ function renderHistory(){
 let editingId=null;
 function renderSessView(d,s){
   const st=stats(s);
-  let holds=s.results.map(r=>'<span>'+resultText(r)+'</span>').join("");
+  let holds=s.results.map(r=>'<span'+(r.type==="PULSE"?' class="pchip"':'')+'>'+resultText(r)+'</span>').join("");
   let meta=[];if(st.avgCp!=null)meta.push("Avg CP "+st.avgCp.toFixed(0)+" s");if(st.bestMp!=null)meta.push("Best MP "+fmt(st.bestMp)+" s");if(st.avgRec!=null)meta.push("Avg recovery "+st.avgRec.toFixed(0)+" s");
-  if(s.pulseStart||s.pulseEnd)meta.push("Pulse "+(s.pulseStart||"-")+" to "+(s.pulseEnd||"-"));
+  const pc=s.results.filter(r=>r.type==="PULSE"&&r.bpm!=null).map(r=>r.bpm);
+  if(pc.length)meta.push("Pulse "+pc.join(", ")+" bpm");
+  else if(s.pulseStart||s.pulseEnd)meta.push("Pulse "+(s.pulseStart||"-")+" to "+(s.pulseEnd||"-"));
   d.innerHTML='<div class="top"><span class="date">'+fdate(s.date)+(s.edited?' <span class="meta">(edited)</span>':'')+'</span><span class="meta">'+meta.join(" | ")+'</span></div><div class="holds">'+holds+'</div>'+(s.notes?'<div class="note"></div>':'')+'<div class="acts"><button class="linkbtn" data-a="edit">Edit</button><button class="linkbtn" data-a="del">Delete</button></div>';
   if(s.notes)d.querySelector(".note").textContent=s.notes;
   const acts=d.querySelector(".acts");
@@ -695,12 +929,17 @@ function renderEditor(d,s){
   const draft=JSON.parse(JSON.stringify(s));
   const k="e"+s.id;
   function holdsHtml(){
-    let h='<table class="edtable"><tr><th>#</th><th>Hold</th><th>CP (s)</th><th>MP (s)</th><th>Recovery (s)</th><th></th></tr>';
+    let h='<table class="edtable"><tr><th>#</th><th>Hold</th><th>CP (s)</th><th>MP (s)</th><th>Recovery (s)</th><th>Steps</th><th></th></tr>';
     draft.results.forEach((r,i)=>{
+      if(r.type==="PULSE"){
+        h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td><td>Pulse</td><td colspan="4"><input type="number" min="20" max="240" step="1" id="'+k+'b'+i+'" aria-label="Step '+(i+1)+' pulse, beats per minute" value="'+(r.bpm==null?"":r.bpm)+'"> <span class="hint">bpm</span></td><td><button class="linkbtn" data-rm="'+i+'">Remove</button></td></tr>';
+        return;
+      }
       h+='<tr data-i="'+i+'"><td>'+(i+1)+'</td><td><select id="'+k+'t'+i+'" aria-label="Hold '+(i+1)+' type">'+["CP","MP","CPMP"].map(t=>'<option value="'+t+'"'+(r.type===t?" selected":"")+'>'+SHORT[t]+'</option>').join("")+'</select></td>'+
         '<td><input type="number" min="0" max="600" step="1" id="'+k+'c'+i+'" aria-label="Hold '+(i+1)+' CP seconds" value="'+(r.cp==null?"":Math.round(r.cp))+'"'+(r.type==="MP"?" disabled":"")+'></td>'+
         '<td><input type="number" min="0" max="600" step="1" id="'+k+'m'+i+'" aria-label="Hold '+(i+1)+' MP seconds" value="'+(r.mp==null?"":Math.round(r.mp))+'"'+(r.type==="CP"?" disabled":"")+'></td>'+
         '<td><input type="number" min="0" max="600" step="1" id="'+k+'r'+i+'" aria-label="Hold '+(i+1)+' recovery seconds" value="'+(r.rec==null?"":Math.round(r.rec))+'"'+(r.type==="CP"?" disabled":"")+'></td>'+
+        '<td class="edsteps">'+(r.type==="CP"?'':stepsRowHtml(k+"s"+i,r))+'</td>'+
         '<td><button class="linkbtn" data-rm="'+i+'">Remove</button></td></tr>';
     });
     return h+'</table>';
@@ -708,7 +947,7 @@ function renderEditor(d,s){
   d.innerHTML='<div class="top"><span class="date">Editing session</span></div>'+
     '<label class="field">Date and time<input type="datetime-local" id="'+k+'dt" value="'+toLocalInput(s.date)+'"></label>'+
     '<div class="tablewrap" id="'+k+'holds"></div>'+
-    '<div class="row"><button class="chipbtn" id="'+k+'add">+ Add a hold</button></div>'+
+    '<div class="row"><button class="chipbtn" id="'+k+'add">+ Add a hold</button><button class="chipbtn add-pulse" id="'+k+'addp">+ Add a pulse reading</button></div>'+
     '<div class="grid2"><label class="field">Pulse at start (bpm)<input type="number" min="30" max="200" id="'+k+'ps" value="'+(s.pulseStart??"")+'"></label>'+
     '<label class="field">Pulse at end (bpm)<input type="number" min="30" max="200" id="'+k+'pe" value="'+(s.pulseEnd??"")+'"></label></div>'+
     '<label class="field">Notes<textarea id="'+k+'n"></textarea></label>'+
@@ -718,10 +957,14 @@ function renderEditor(d,s){
   const hw=d.querySelector("#"+k+"holds");
   function readRows(){
     draft.results.forEach((r,i)=>{
+      if(r.type==="PULSE"){const b=d.querySelector("#"+k+"b"+i).value;r.bpm=b===""?null:+b;r.beats=r.bpm==null?null:Math.round(r.bpm/2);return}
       r.type=d.querySelector("#"+k+"t"+i).value;
       const c=d.querySelector("#"+k+"c"+i).value,m=d.querySelector("#"+k+"m"+i).value;
       r.cp=c===""?null:+c;r.mp=m===""?null:+m;
       const rv=d.querySelector("#"+k+"r"+i).value;r.rec=rv===""||r.type==="CP"?null:+rv;
+      const sst=d.querySelector("#"+k+"s"+i+"t"),ssn=d.querySelector("#"+k+"s"+i+"n");
+      if(r.type==="CP"||!sst){r.stepType=null;r.steps=null}
+      else{r.stepType=sst.value||null;const v=parseInt(ssn.value,10);r.steps=r.stepType&&!isNaN(v)?Math.max(0,v):null}
     });
   }
   function paint(){
@@ -731,14 +974,16 @@ function renderEditor(d,s){
   }
   paint();
   d.querySelector("#"+k+"add").onclick=()=>{readRows();draft.results.push({type:"CP",cp:null,mp:null});paint()};
+  d.querySelector("#"+k+"addp").onclick=()=>{readRows();draft.results.push({type:"PULSE",beats:null,bpm:null});paint()};
   d.querySelector("#"+k+"cancel").onclick=()=>{editingId=null;renderHistory()};
   d.querySelector("#"+k+"save").onclick=()=>{
     readRows();
     const err=d.querySelector("#"+k+"err");
     const problem=(()=>{
-      if(!draft.results.length)return"A session needs at least one hold. To remove the whole session, cancel and use Delete.";
+      if(!draft.results.some(r=>r.type!=="PULSE"))return"A session needs at least one hold. To remove the whole session, cancel and use Delete.";
       for(let i=0;i<draft.results.length;i++){
         const r=draft.results[i];
+        if(r.type==="PULSE"){if(r.bpm==null||r.bpm<20||r.bpm>240)return"Step "+(i+1)+" needs a pulse between 20 and 240 bpm.";continue}
         if(r.type==="MP")r.cp=null;if(r.type==="CP")r.mp=null;
         if(r.type!=="MP"&&r.cp==null)return"Hold "+(i+1)+" needs a CP time.";
         if(r.type!=="CP"&&r.mp==null)return"Hold "+(i+1)+" needs an MP time.";
@@ -780,8 +1025,8 @@ function renderChart(){
   wrap.innerHTML=h;
 }
 function csv(){
-  const rows=[["Date","Time","Session","Hold no","Hold type","CP (s)","MP (s)","Recovery (s)","Pulse start","Pulse end","Notes"]];
-  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
+  const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","Step type","Steps","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
+  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",r.stepType?STEPN[r.stepType]:"",r.stepType?(r.steps??""):"",r.vsb??"",r.nsb??"",r.type==="PULSE"?(r.bpm??""):"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
   return rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(",")).join("\r\n");
 }
 function download(name,text,type){
