@@ -93,6 +93,10 @@ textarea{min-height:70px;resize:vertical}
 .big.breath{background:var(--surface);color:var(--ink);border:2px solid var(--cp)}
 .big.pulse{background:var(--pulse)}
 .big:disabled{cursor:default}
+.big.paused{background:var(--surface);color:var(--ink);border:2px dashed var(--muted)}
+.timer.paused{opacity:.45;animation:blink 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.timer.paused{animation:none}}
+.pausebtn[aria-pressed="true"]{border-color:var(--cp);color:var(--cp);font-weight:500}
 .big.pulse.holding{animation-name:breathe-pulse}
 @keyframes breathe-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pulse) 35%,transparent)}50%{box-shadow:0 0 0 18px color-mix(in srgb,var(--pulse) 0%,transparent)}}
 .typename.PULSE{color:var(--pulse)} .typename.BR{color:var(--cp)}
@@ -276,7 +280,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <h3>Options</h3>
     <div class="grid2">
       <label class="check"><input type="checkbox" id="recovery"> Time my recovery after each MP</label>
-      <label class="check"><input type="checkbox" id="steps"> Ask about walking or energetic steps after each MP</label>
+      <label class="check"><input type="checkbox" id="steps"> Ask about steps or belly pumps after each MP</label>
       <label class="field">Call out the seconds during holds
         <select id="voice">
           <option value="0">Off</option>
@@ -301,7 +305,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div><b>Recovery</b>After an MP, gentle shallow breathing until your breathing settles. Tap Recovered when it has. This should get shorter with practice.</div>
     <div><b>Very Shallow Breathing (VSB)</b>Very rapid, very shallow breathing for 3 to 5 minutes, counted down.</div>
     <div><b>Normalised Shallow Breathing (NSB)</b>Breathing settles back to gentle shallow breaths. The timer counts up until you press Done.</div>
-    <div><b>Steps</b>During an MP you can walk or do energetic steps. After the hold, while you recover and breathe, pick which you did and enter the number of steps.</div>
+    <div><b>Steps and belly pumps</b>During an MP you can do walking steps, energetic steps or belly pumps. After the hold, while you recover and breathe, pick which you did and enter the count.</div>
     <div><b>Pulse check</b>A 5 second countdown, then 30 seconds to count your heartbeats. The app doubles it to beats per minute.</div>
   </div>
 </section>
@@ -326,18 +330,20 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   </div>
   <button class="big" id="big">Start</button>
   <div class="stepsbox" id="stepsBox" hidden>
-    <span class="stepsq">During that MP, did you do steps?</span>
+    <span class="stepsq">During that MP, did you do steps or belly pumps?</span>
     <div class="seg" role="group" aria-label="Type of steps">
       <button type="button" data-st="walking">Walking steps</button>
       <button type="button" data-st="energetic">Energetic steps</button>
-      <button type="button" data-st="none">No steps</button>
+      <button type="button" data-st="belly">Belly pumps</button>
+      <button type="button" data-st="none">None</button>
     </div>
-    <label class="stepcount" id="stepCountWrap">Number of steps
+    <label class="stepcount" id="stepCountWrap"><span id="stepCountLabel">Number of steps</span>
       <span class="stepper"><button type="button" id="stepMinus" aria-label="5 fewer steps">-5</button><input type="number" id="stepCount" min="0" max="999" inputmode="numeric" autocomplete="off"><button type="button" id="stepPlus" aria-label="5 more steps">+5</button></span>
     </label>
   </div>
-  <p class="hint" id="keyhint">Space bar works too. Esc cancels a hold.</p>
+  <p class="hint" id="keyhint">Space bar works too. P pauses. Esc cancels a hold.</p>
   <div class="minor">
+    <button class="ghost pausebtn" id="pauseBtn" hidden>Pause</button>
     <button class="ghost" id="cancelHold" hidden>Cancel this hold</button>
     <button class="ghost" id="skipPulse" hidden>Skip pulse check</button>
     <button class="ghost" id="redoLast" hidden>Redo last step</button>
@@ -351,7 +357,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div class="tablewrap"><table id="doneTable"></table></div>
   </div>
   <div class="panel" id="doneStepsPanel" hidden>
-    <h3>Steps during each MP</h3>
+    <h3>Steps or belly pumps during each MP</h3>
     <div class="donesteps" id="doneSteps"></div>
   </div>
   <div class="panel">
@@ -590,7 +596,21 @@ $("startSession").onclick=()=>{
   keepAwake(true);show("run");renderRun();
 };
 
-function elapsed(){return (performance.now()-run.t0)/1000}
+function elapsed(){return ((run.paused?run.pauseAt:performance.now())-run.t0)/1000}
+const pausable=p=>isHoldPhase(p)||p==="recovery"||p==="vsb"||p==="nsb"||p==="pulseLead"||p==="pulseCount";
+function togglePause(){
+  if(!run||!pausable(run.phase))return;
+  if(!run.paused){
+    run.paused=true;run.pauseAt=performance.now();
+    clearTimeout(tickT);cancelAnimationFrame(raf);
+    if(canSpeak)try{speechSynthesis.cancel()}catch(e){}
+  }else{
+    run.t0+=performance.now()-run.pauseAt;run.paused=false;
+    if(isHoldPhase(run.phase)||run.phase==="recovery")loop();else tick();
+  }
+  renderRun();
+}
+function clearPause(){if(run){run.paused=false}}
 function fmt(s){return s==null?"-":String(Math.round(s))}
 function mmss(s){if(s==null)return"-";s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
 const isHoldPhase=p=>p==="holding"||p==="holdingMP";
@@ -599,6 +619,7 @@ const curType=()=>run.seq[Math.min(run.idx,run.seq.length-1)];
 
 function primary(){
   if(!run)return;
+  if(run.paused){togglePause();return}
   const type=run.seq[run.idx];
   if(run.phase==="ready"){
     if(type==="PULSE"){run.t0=performance.now();run.lastBeep=-1;run.phase="pulseLead";unlockVoice();tick()}
@@ -694,23 +715,25 @@ function tick(){
   }else if(run.phase==="nsb"){
     tm.innerHTML=mmss(Math.floor(e));
   }else return;
-  tickT=setTimeout(tick,100);
+  if(!run.paused)tickT=setTimeout(tick,100);
 }
 
 function cancelHold(){
   if(!run)return;
+  clearPause();
   if(run.phase==="pulseLead"||run.phase==="pulseCount"){clearTimeout(tickT);run.phase="ready";renderRun();return}
   if(!isHoldPhase(run.phase))return;
   cancelAnimationFrame(raf);run.phase="ready";run.cp=null;renderRun();
 }
 function redoLast(){
   if(!run||!run.results.length||isHoldPhase(run.phase)||run.phase==="pulseLead"||run.phase==="pulseCount")return;
-  clearTimeout(tickT);cancelAnimationFrame(raf);run.results.pop();run.idx--;run.phase="ready";renderRun();
+  clearPause();clearTimeout(tickT);cancelAnimationFrame(raf);run.results.pop();run.idx--;run.phase="ready";renderRun();
 }
 function loop(){
   if(!run||(!isHoldPhase(run.phase)&&run.phase!=="recovery"))return;
   const e=elapsed();
   $("timer").innerHTML=Math.floor(e)+"<small>s</small>";
+  if(run.paused)return;
   if(run.phase==="recovery"){raf=requestAnimationFrame(loop);return}
   if(run.voice){const mark=Math.floor(e/run.voice)*run.voice;if(mark>0&&mark>run.spoken){run.spoken=mark;say(mark+" seconds")}}
   drawScale(e,run.cp);
@@ -746,6 +769,7 @@ function renderRun(){
   $("redoLast").hidden=!(run.results.length&&(p==="ready"||between||p==="pulseEntry"));
   $("keyhint").hidden=p==="pulseEntry";
   paintSteps();
+  const pb=$("pauseBtn");pb.hidden=!pausable(p);pb.textContent=run.paused?"Resume":"Pause";pb.setAttribute("aria-pressed",String(!!run.paused));
   const last=lastResult();
   if(p==="ready"){
     if(type==="PULSE"){
@@ -803,12 +827,24 @@ function renderRun(){
     const inp=$("pulseBeats");inp.value="";$("pulseErr").hidden=true;$("pulseCalc").textContent="";
     setTimeout(()=>{try{inp.focus()}catch(e){}},50);
   }
+  if(run.paused){
+    big.classList.remove("holding");big.classList.add("paused");big.disabled=false;big.textContent="Resume";
+    tm.classList.add("paused");
+    ins.textContent="Paused. Press Resume when you're ready to carry on.";
+  }
 }
-const STEPN={walking:"Walking",energetic:"Energetic"};
+const STEPN={walking:"Walking",energetic:"Energetic",belly:"Belly pumps"};
+// Full label with count, e.g. "Walking 40 steps", "Belly pumps 30"
+function stepPhrase(r,lower){
+  if(!r.stepType)return"";
+  if(r.stepType==="belly")return (lower?"belly pumps":"Belly pumps")+(r.steps==null?"":" "+r.steps);
+  return (lower?STEPN[r.stepType].toLowerCase():STEPN[r.stepType])+" "+(r.steps==null?"":r.steps+" ")+"steps";
+}
+const isCounted=t=>t==="walking"||t==="energetic"||t==="belly";
 function resultText(r){
   if(r.type==="PULSE")return r.bpm==null?"Pulse skipped":"Pulse "+r.bpm+" bpm";
   const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");if(r.rec!=null)p.push("Recovery "+fmt(r.rec)+" s");
-  if(r.stepType)p.push(STEPN[r.stepType]+" "+(r.steps==null?"":r.steps+" ")+"steps");
+  if(r.stepType)p.push(stepPhrase(r));
   if(r.vsb!=null)p.push("VSB "+mmss(r.vsb));if(r.nsb!=null)p.push("NSB "+mmss(r.nsb));
   return p.join(", ");
 }
@@ -836,10 +872,12 @@ document.addEventListener("keydown",ev=>{
   if(tag==="button"&&ev.target.id!=="big"&&ev.code!=="Escape")return;
   if(ev.code==="Space"||ev.code==="Enter"){ev.preventDefault();if(!ev.repeat)primary()}
   else if(ev.code==="Escape"){cancelHold()}
+  else if(ev.code==="KeyP"){ev.preventDefault();togglePause()}
 });
 $("big").addEventListener("click",ev=>{ev.preventDefault();if(ev.detail===0)return;primary()});
 $("cancelHold").onclick=cancelHold;
 $("redoLast").onclick=redoLast;
+$("pauseBtn").onclick=togglePause;
 $("skipPulse").onclick=skipPulse;
 function stepsTarget(){if(!run)return null;const l=lastResult();return l&&l.type!=="PULSE"&&l.mp!=null?l:null}
 function paintSteps(){
@@ -849,7 +887,8 @@ function paintSteps(){
   if(box.hidden)return;
   const st=t.stepType===undefined?null:t.stepType;
   box.querySelectorAll("[data-st]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.st===(st||(t.stepsAnswered?"none":"")))));
-  $("stepCountWrap").hidden=!(st==="walking"||st==="energetic");
+  $("stepCountWrap").hidden=!isCounted(st);
+  $("stepCountLabel").textContent=st==="belly"?"Number of belly pumps":"Number of steps";
   const inp=$("stepCount");if(document.activeElement!==inp)inp.value=t.steps==null?"":t.steps;
 }
 document.querySelectorAll("#stepsBox [data-st]").forEach(b=>b.onclick=()=>{
@@ -888,8 +927,8 @@ function finishSession(){
 let doneAskSteps=false;
 function stepsRowHtml(id,r){
   const st=r.stepType||"";
-  return '<select id="'+id+'t" aria-label="Type of steps"><option value=""'+(st?"":" selected")+'>No steps</option><option value="walking"'+(st==="walking"?" selected":"")+'>Walking steps</option><option value="energetic"'+(st==="energetic"?" selected":"")+'>Energetic steps</option></select>'+
-    '<input type="number" min="0" max="999" inputmode="numeric" id="'+id+'n" aria-label="Number of steps" placeholder="Steps" value="'+(r.steps==null?"":r.steps)+'"'+(st?"":" disabled")+'>';
+  return '<select id="'+id+'t" aria-label="Type of steps"><option value=""'+(st?"":" selected")+'>None</option><option value="walking"'+(st==="walking"?" selected":"")+'>Walking steps</option><option value="energetic"'+(st==="energetic"?" selected":"")+'>Energetic steps</option><option value="belly"'+(st==="belly"?" selected":"")+'>Belly pumps</option></select>'+
+    '<input type="number" min="0" max="999" inputmode="numeric" id="'+id+'n" aria-label="Number of steps or pumps" placeholder="Count" value="'+(r.steps==null?"":r.steps)+'"'+(st?"":" disabled")+'>';
 }
 function renderDoneSteps(){
   const holds=pending.results.map((r,i)=>[r,i]).filter(([r])=>r.type!=="PULSE"&&r.mp!=null);
@@ -907,7 +946,7 @@ function renderDoneSteps(){
 }
 function renderDone(){
   const R=pending.results, has=k=>R.some(r=>r[k]!=null);
-  const cols=[["cp","CP (s)","cpv",fmt],["mp","MP (s)","mpv",fmt],["rec","Recovery (s)","recv",fmt],["steps","Steps","",(v,r)=>r&&r.stepType?STEPN[r.stepType]+(v==null?"":" "+v):"-"],["vsb","VSB","",mmss],["nsb","NSB","",mmss]].filter(c=>c[0]==="cp"||c[0]==="mp"||(c[0]==="steps"?R.some(r=>r.stepType):has(c[0])));
+  const cols=[["cp","CP (s)","cpv",fmt],["mp","MP (s)","mpv",fmt],["rec","Recovery (s)","recv",fmt],["steps","Steps / pumps","",(v,r)=>r&&r.stepType?STEPN[r.stepType]+(v==null?"":" "+v):"-"],["vsb","VSB","",mmss],["nsb","NSB","",mmss]].filter(c=>c[0]==="cp"||c[0]==="mp"||(c[0]==="steps"?R.some(r=>r.stepType):has(c[0])));
   let h='<tr><th>#</th><th>Step</th>'+cols.map(c=>'<th class="num">'+c[1]+'</th>').join("")+'</tr>';
   R.forEach((r,i)=>{
     if(r.type==="PULSE"){h+='<tr><td>'+(i+1)+'</td><td>Pulse check</td><td class="num pulsev" colspan="'+cols.length+'">'+r.bpm+' bpm <span class="hint">('+r.beats+' in 30 s)</span></td></tr>';return}
@@ -1081,7 +1120,7 @@ function renderChart(){
   wrap.innerHTML=chartSvg(pts);
 }
 function csv(){
-  const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","Step type","Steps","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
+  const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","Steps or pumps type","Count","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
   log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",r.stepType?STEPN[r.stepType]:"",r.stepType?(r.steps??""):"",r.vsb??"",r.nsb??"",r.type==="PULSE"?(r.bpm??""):"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
   return rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(",")).join("\r\n");
 }
@@ -1171,7 +1210,7 @@ function reportData(){
     mp:{avg:avg(vals("mp")),best:vals("mp").length?Math.max(...vals("mp")):null,trend:firstLast("bestMp")},
     rec:{avg:avg(vals("rec")),trend:firstLast("avgRec")},
     pulse:pulses.length?{avg:avg(pulses),min:Math.min(...pulses),max:Math.max(...pulses)}:null,
-    walking:stepAvg("walking"),energetic:stepAvg("energetic")};
+    walking:stepAvg("walking"),energetic:stepAvg("energetic"),belly:stepAvg("belly")};
 }
 function trendText(t,unit,lowerIsBetter){
   if(!t||t.n<2)return"";
@@ -1188,6 +1227,7 @@ function summaryLines(R){
   if(R.rec.avg!=null)L.push(["Recovery","average "+r0(R.rec.avg)+" s"+(R.rec.trend&&R.rec.trend.n>1?"; "+trendText(R.rec.trend,"s",true):"")]);
   if(R.pulse)L.push(["Pulse","average "+r0(R.pulse.avg)+" bpm, range "+R.pulse.min+" to "+R.pulse.max]);
   if(R.walking)L.push(["Walking steps","average "+r0(R.walking.avg)+", best "+R.walking.best+" (over "+R.walking.n+" MP"+(R.walking.n===1?"":"s")+")"]);
+  if(R.belly)L.push(["Belly pumps","average "+r0(R.belly.avg)+", best "+R.belly.best+" (over "+R.belly.n+" MP"+(R.belly.n===1?"":"s")+")"]);
   if(R.energetic)L.push(["Energetic steps","average "+r0(R.energetic.avg)+", best "+R.energetic.best+" (over "+R.energetic.n+" MP"+(R.energetic.n===1?"":"s")+")"]);
   return L;
 }
@@ -1195,7 +1235,7 @@ function stepLine(r){
   if(r.type==="PULSE")return "Pulse check: "+r.bpm+" bpm";
   const p=[];
   if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");
-  if(r.stepType)p.push((r.steps==null?"":r.steps+" ")+STEPN[r.stepType].toLowerCase()+" steps");
+  if(r.stepType)p.push(r.stepType==="belly"?(r.steps==null?"":r.steps+" ")+"belly pumps":(r.steps==null?"":r.steps+" ")+STEPN[r.stepType].toLowerCase()+" steps");
   if(r.rec!=null)p.push("recovery "+fmt(r.rec)+" s");
   if(r.vsb!=null)p.push("VSB "+mmss(r.vsb));if(r.nsb!=null)p.push("NSB "+mmss(r.nsb));
   return NAMES[r.type]+": "+p.join(", ");
