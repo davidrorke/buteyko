@@ -280,7 +280,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <h3>Options</h3>
     <div class="grid2">
       <label class="check"><input type="checkbox" id="recovery"> Time my recovery after each MP</label>
-      <label class="check"><input type="checkbox" id="steps"> Ask about steps or belly pumps after each MP</label>
+      <label class="check"><input type="checkbox" id="steps"> Ask what I did during each MP (steps, belly pumps, lying or sitting)</label>
       <label class="field">Call out the seconds during holds
         <select id="voice">
           <option value="0">Off</option>
@@ -305,7 +305,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div><b>Recovery</b>After an MP, gentle shallow breathing until your breathing settles. Tap Recovered when it has. This should get shorter with practice.</div>
     <div><b>Very Shallow Breathing (VSB)</b>Very rapid, very shallow breathing for 3 to 5 minutes, counted down.</div>
     <div><b>Normalised Shallow Breathing (NSB)</b>Breathing settles back to gentle shallow breaths. The timer counts up until you press Done.</div>
-    <div><b>Steps and belly pumps</b>During an MP you can do walking steps, energetic steps or belly pumps. After the hold, while you recover and breathe, pick which you did and enter the count.</div>
+    <div><b>During the MP</b>Walking steps, energetic steps, belly pumps, lying on your left side or sitting. After the hold, while you recover and breathe, pick which you did and enter the count where there is one.</div>
     <div><b>Pulse check</b>A 5 second countdown, then 30 seconds to count your heartbeats. The app doubles it to beats per minute.</div>
   </div>
 </section>
@@ -330,11 +330,13 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   </div>
   <button class="big" id="big">Start</button>
   <div class="stepsbox" id="stepsBox" hidden>
-    <span class="stepsq">During that MP, did you do steps or belly pumps?</span>
-    <div class="seg" role="group" aria-label="Type of steps">
+    <span class="stepsq">What did you do during that MP?</span>
+    <div class="seg" role="group" aria-label="What you did during the MP">
       <button type="button" data-st="walking">Walking steps</button>
       <button type="button" data-st="energetic">Energetic steps</button>
       <button type="button" data-st="belly">Belly pumps</button>
+      <button type="button" data-st="leftside">Lying on left side</button>
+      <button type="button" data-st="sitting">Sitting</button>
       <button type="button" data-st="none">None</button>
     </div>
     <label class="stepcount" id="stepCountWrap"><span id="stepCountLabel">Number of steps</span>
@@ -357,7 +359,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div class="tablewrap"><table id="doneTable"></table></div>
   </div>
   <div class="panel" id="doneStepsPanel" hidden>
-    <h3>Steps or belly pumps during each MP</h3>
+    <h3>What you did during each MP</h3>
     <div class="donesteps" id="doneSteps"></div>
   </div>
   <div class="panel">
@@ -833,14 +835,16 @@ function renderRun(){
     ins.textContent="Paused. Press Resume when you're ready to carry on.";
   }
 }
-const STEPN={walking:"Walking",energetic:"Energetic",belly:"Belly pumps"};
+const isCounted=t=>t==="walking"||t==="energetic"||t==="belly";
+const STEPN={walking:"Walking",energetic:"Energetic",belly:"Belly pumps",leftside:"Lying on left side",sitting:"Sitting"};
 // Full label with count, e.g. "Walking 40 steps", "Belly pumps 30"
 function stepPhrase(r,lower){
   if(!r.stepType)return"";
+  if(!isCounted(r.stepType))return lower?STEPN[r.stepType].toLowerCase():STEPN[r.stepType];
   if(r.stepType==="belly")return (lower?"belly pumps":"Belly pumps")+(r.steps==null?"":" "+r.steps);
   return (lower?STEPN[r.stepType].toLowerCase():STEPN[r.stepType])+" "+(r.steps==null?"":r.steps+" ")+"steps";
 }
-const isCounted=t=>t==="walking"||t==="energetic"||t==="belly";
+
 function resultText(r){
   if(r.type==="PULSE")return r.bpm==null?"Pulse skipped":"Pulse "+r.bpm+" bpm";
   const p=[];if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");if(r.rec!=null)p.push("Recovery "+fmt(r.rec)+" s");
@@ -895,9 +899,9 @@ document.querySelectorAll("#stepsBox [data-st]").forEach(b=>b.onclick=()=>{
   const t=stepsTarget();if(!t)return;
   t.stepsAnswered=true;
   if(b.dataset.st==="none"){t.stepType=null;t.steps=null}
-  else{t.stepType=b.dataset.st;run.lastStepType=b.dataset.st}
+  else{t.stepType=b.dataset.st;run.lastStepType=b.dataset.st;if(!isCounted(t.stepType))t.steps=null}
   paintSteps();
-  if(t.stepType)setTimeout(()=>{try{$("stepCount").focus()}catch(e){}},30);
+  if(isCounted(t.stepType))setTimeout(()=>{try{$("stepCount").focus()}catch(e){}},30);
 });
 $("stepCount").oninput=e=>{const t=stepsTarget();if(!t)return;const v=parseInt(e.target.value,10);t.steps=isNaN(v)?null:Math.max(0,v)};
 const bump=d=>{const t=stepsTarget();if(!t)return;t.steps=Math.max(0,(t.steps||0)+d);$("stepCount").value=t.steps};
@@ -927,8 +931,8 @@ function finishSession(){
 let doneAskSteps=false;
 function stepsRowHtml(id,r){
   const st=r.stepType||"";
-  return '<select id="'+id+'t" aria-label="Type of steps"><option value=""'+(st?"":" selected")+'>None</option><option value="walking"'+(st==="walking"?" selected":"")+'>Walking steps</option><option value="energetic"'+(st==="energetic"?" selected":"")+'>Energetic steps</option><option value="belly"'+(st==="belly"?" selected":"")+'>Belly pumps</option></select>'+
-    '<input type="number" min="0" max="999" inputmode="numeric" id="'+id+'n" aria-label="Number of steps or pumps" placeholder="Count" value="'+(r.steps==null?"":r.steps)+'"'+(st?"":" disabled")+'>';
+  return '<select id="'+id+'t" aria-label="What you did during the MP"><option value=""'+(st?"":" selected")+'>None</option><option value="walking"'+(st==="walking"?" selected":"")+'>Walking steps</option><option value="energetic"'+(st==="energetic"?" selected":"")+'>Energetic steps</option><option value="belly"'+(st==="belly"?" selected":"")+'>Belly pumps</option><option value="leftside"'+(st==="leftside"?" selected":"")+'>Lying on left side</option><option value="sitting"'+(st==="sitting"?" selected":"")+'>Sitting</option></select>'+
+    '<input type="number" min="0" max="999" inputmode="numeric" id="'+id+'n" aria-label="Number of steps or pumps" placeholder="Count" value="'+(r.steps==null?"":r.steps)+'"'+(isCounted(st)?"":" disabled")+'>';
 }
 function renderDoneSteps(){
   const holds=pending.results.map((r,i)=>[r,i]).filter(([r])=>r.type!=="PULSE"&&r.mp!=null);
@@ -939,14 +943,14 @@ function renderDoneSteps(){
     const row=document.createElement("div");row.className="dsrow";
     row.innerHTML='<b>Step '+(i+1)+'</b>'+stepsRowHtml("ds"+i,r);
     const sel=row.querySelector("select"),num=row.querySelector("input");
-    sel.onchange=()=>{r.stepType=sel.value||null;num.disabled=!r.stepType;if(!r.stepType){r.steps=null;num.value=""}else num.focus();renderDone()};
+    sel.onchange=()=>{r.stepType=sel.value||null;num.disabled=!isCounted(r.stepType);if(!isCounted(r.stepType)){r.steps=null;num.value=""}else num.focus();renderDone()};
     num.oninput=()=>{const v=parseInt(num.value,10);r.steps=isNaN(v)?null:Math.max(0,v);renderDone()};
     w.appendChild(row);
   });
 }
 function renderDone(){
   const R=pending.results, has=k=>R.some(r=>r[k]!=null);
-  const cols=[["cp","CP (s)","cpv",fmt],["mp","MP (s)","mpv",fmt],["rec","Recovery (s)","recv",fmt],["steps","Steps / pumps","",(v,r)=>r&&r.stepType?STEPN[r.stepType]+(v==null?"":" "+v):"-"],["vsb","VSB","",mmss],["nsb","NSB","",mmss]].filter(c=>c[0]==="cp"||c[0]==="mp"||(c[0]==="steps"?R.some(r=>r.stepType):has(c[0])));
+  const cols=[["cp","CP (s)","cpv",fmt],["mp","MP (s)","mpv",fmt],["rec","Recovery (s)","recv",fmt],["steps","During MP","",(v,r)=>r&&r.stepType?STEPN[r.stepType]+(v==null?"":" "+v):"-"],["vsb","VSB","",mmss],["nsb","NSB","",mmss]].filter(c=>c[0]==="cp"||c[0]==="mp"||(c[0]==="steps"?R.some(r=>r.stepType):has(c[0])));
   let h='<tr><th>#</th><th>Step</th>'+cols.map(c=>'<th class="num">'+c[1]+'</th>').join("")+'</tr>';
   R.forEach((r,i)=>{
     if(r.type==="PULSE"){h+='<tr><td>'+(i+1)+'</td><td>Pulse check</td><td class="num pulsev" colspan="'+cols.length+'">'+r.bpm+' bpm <span class="hint">('+r.beats+' in 30 s)</span></td></tr>';return}
@@ -1056,7 +1060,7 @@ function renderEditor(d,s){
       const rv=d.querySelector("#"+k+"r"+i).value;r.rec=rv===""||r.type==="CP"?null:+rv;
       const sst=d.querySelector("#"+k+"s"+i+"t"),ssn=d.querySelector("#"+k+"s"+i+"n");
       if(r.type==="CP"||!sst){r.stepType=null;r.steps=null}
-      else{r.stepType=sst.value||null;const v=parseInt(ssn.value,10);r.steps=r.stepType&&!isNaN(v)?Math.max(0,v):null}
+      else{r.stepType=sst.value||null;const v=parseInt(ssn.value,10);r.steps=isCounted(r.stepType)&&!isNaN(v)?Math.max(0,v):null}
     });
   }
   function paint(){
@@ -1120,8 +1124,8 @@ function renderChart(){
   wrap.innerHTML=chartSvg(pts);
 }
 function csv(){
-  const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","Steps or pumps type","Count","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
-  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",r.stepType?STEPN[r.stepType]:"",r.stepType?(r.steps??""):"",r.vsb??"",r.nsb??"",r.type==="PULSE"?(r.bpm??""):"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
+  const rows=[["Date","Time","Session","Step no","Step","CP (s)","MP (s)","Recovery (s)","During MP","Count","VSB (s)","NSB (s)","Pulse check (bpm)","Pulse start","Pulse end","Notes"]];
+  log.forEach((s,si)=>{const d=new Date(s.date);s.results.forEach((r,i)=>rows.push([d.toLocaleDateString("en-GB"),d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),si+1,i+1,NAMES[r.type],r.cp??"",r.mp??"",r.rec??"",r.stepType?STEPN[r.stepType]:"",isCounted(r.stepType)?(r.steps??""):"",r.vsb??"",r.nsb??"",r.type==="PULSE"?(r.bpm??""):"",i===0?(s.pulseStart??""):"",i===0?(s.pulseEnd??""):"",i===0?(s.notes||""):""]))});
   return rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c}).join(",")).join("\r\n");
 }
 function download(name,text,type){
@@ -1210,7 +1214,8 @@ function reportData(){
     mp:{avg:avg(vals("mp")),best:vals("mp").length?Math.max(...vals("mp")):null,trend:firstLast("bestMp")},
     rec:{avg:avg(vals("rec")),trend:firstLast("avgRec")},
     pulse:pulses.length?{avg:avg(pulses),min:Math.min(...pulses),max:Math.max(...pulses)}:null,
-    walking:stepAvg("walking"),energetic:stepAvg("energetic"),belly:stepAvg("belly")};
+    walking:stepAvg("walking"),energetic:stepAvg("energetic"),belly:stepAvg("belly"),
+    positions:["leftside","sitting"].map(t=>[t,all.filter(r=>r.stepType===t).length]).filter(x=>x[1])};
 }
 function trendText(t,unit,lowerIsBetter){
   if(!t||t.n<2)return"";
@@ -1227,6 +1232,7 @@ function summaryLines(R){
   if(R.rec.avg!=null)L.push(["Recovery","average "+r0(R.rec.avg)+" s"+(R.rec.trend&&R.rec.trend.n>1?"; "+trendText(R.rec.trend,"s",true):"")]);
   if(R.pulse)L.push(["Pulse","average "+r0(R.pulse.avg)+" bpm, range "+R.pulse.min+" to "+R.pulse.max]);
   if(R.walking)L.push(["Walking steps","average "+r0(R.walking.avg)+", best "+R.walking.best+" (over "+R.walking.n+" MP"+(R.walking.n===1?"":"s")+")"]);
+  if(R.positions.length)L.push(["Resting MPs",R.positions.map(([t,n])=>STEPN[t].toLowerCase()+" "+n+" time"+(n===1?"":"s")).join(", ")]);
   if(R.belly)L.push(["Belly pumps","average "+r0(R.belly.avg)+", best "+R.belly.best+" (over "+R.belly.n+" MP"+(R.belly.n===1?"":"s")+")"]);
   if(R.energetic)L.push(["Energetic steps","average "+r0(R.energetic.avg)+", best "+R.energetic.best+" (over "+R.energetic.n+" MP"+(R.energetic.n===1?"":"s")+")"]);
   return L;
@@ -1235,7 +1241,8 @@ function stepLine(r){
   if(r.type==="PULSE")return "Pulse check: "+r.bpm+" bpm";
   const p=[];
   if(r.cp!=null)p.push("CP "+fmt(r.cp)+" s");if(r.mp!=null)p.push("MP "+fmt(r.mp)+" s");
-  if(r.stepType)p.push(r.stepType==="belly"?(r.steps==null?"":r.steps+" ")+"belly pumps":(r.steps==null?"":r.steps+" ")+STEPN[r.stepType].toLowerCase()+" steps");
+  if(r.stepType&&!isCounted(r.stepType))p.push(STEPN[r.stepType].toLowerCase());
+  else if(r.stepType)p.push(r.stepType==="belly"?(r.steps==null?"":r.steps+" ")+"belly pumps":(r.steps==null?"":r.steps+" ")+STEPN[r.stepType].toLowerCase()+" steps");
   if(r.rec!=null)p.push("recovery "+fmt(r.rec)+" s");
   if(r.vsb!=null)p.push("VSB "+mmss(r.vsb));if(r.nsb!=null)p.push("NSB "+mmss(r.nsb));
   return NAMES[r.type]+": "+p.join(", ");
