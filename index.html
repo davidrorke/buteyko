@@ -218,6 +218,10 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   .report{border:0;padding:0}
   body{font-size:11pt}
 }
+body{overscroll-behavior-y:contain}
+.resume{border-color:var(--cp);background:var(--cp-soft)}
+.undobar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom, 0px));background:var(--ink);color:var(--bg);padding:8px 8px 8px 18px;border-radius:999px;display:flex;align-items:center;gap:12px;font-size:.92rem;z-index:20;max-width:calc(100% - 32px)}
+.undobar .ghost{color:var(--bg);border-color:color-mix(in srgb,var(--bg) 50%,transparent);padding:6px 14px}
 .linkbtn{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.82rem;padding:0}
 .emptystate{color:var(--muted);text-align:center;padding:24px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:.9rem}
@@ -238,6 +242,15 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
 
 <!-- SETUP -->
 <section id="v-setup">
+  <div class="panel resume" id="resumePanel" hidden>
+    <h3>Unfinished session</h3>
+    <p id="resumeText" style="margin:0"></p>
+    <div class="row" id="resumeBtns">
+      <button class="primary" id="resumeGo" style="padding:10px 20px;font-size:.95rem">Carry on</button>
+      <button class="ghost" id="resumeFinish">Go to the finish screen</button>
+      <button class="ghost danger" id="resumeDrop">Discard it</button>
+    </div>
+  </div>
   <h2>Plan this session</h2>
   <p class="lead">Pick a preset or build the order of holds yourself.</p>
 
@@ -372,9 +385,12 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
   </div>
   <div class="row">
     <button class="primary" id="saveSession">Save to history</button>
+    <button class="ghost" id="doneRedo">Redo last step</button>
     <span id="discardWrap"><button class="ghost danger" id="discard">Discard</button></span>
   </div>
 </section>
+
+<div class="undobar" id="undoBar" role="status" hidden><span>Session discarded.</span><button class="ghost" id="undoBtn">Undo</button></div>
 
 <!-- REPORT -->
 <section id="v-report" hidden>
@@ -413,7 +429,7 @@ a.ghost{text-decoration:none;display:inline-flex;align-items:center}
     <div class="row"><button class="primary" id="makeReport" style="padding:10px 20px;font-size:.95rem">Create report</button></div>
   </div>
   <div class="panel">
-    <h3>Sessions</h3>
+    <div class="row" style="justify-content:space-between"><h3>Sessions</h3><button class="ghost" id="addManual">+ Add a session by hand</button></div>
     <div id="sessList"></div>
   </div>
   <div class="panel" id="drivePanel">
@@ -536,6 +552,7 @@ function show(v){
   $("nav-setup").setAttribute("aria-current",String(v!=="history"));
   $("nav-history").setAttribute("aria-current",String(v==="history"||v==="report"));
   if(v==="history")renderHistory();
+  if(v==="setup"&&!run&&!pending)checkDraft();
   window.scrollTo(0,0);
 }
 $("nav-setup").onclick=()=>show(run?"run":(pending?"done":"setup"));
@@ -829,6 +846,7 @@ function renderRun(){
     const inp=$("pulseBeats");inp.value="";$("pulseErr").hidden=true;$("pulseCalc").textContent="";
     setTimeout(()=>{try{inp.focus()}catch(e){}},50);
   }
+  saveDraft();
   if(run.paused){
     big.classList.remove("holding");big.classList.add("paused");big.disabled=false;big.textContent="Resume";
     tm.classList.add("paused");
@@ -900,11 +918,11 @@ document.querySelectorAll("#stepsBox [data-st]").forEach(b=>b.onclick=()=>{
   t.stepsAnswered=true;
   if(b.dataset.st==="none"){t.stepType=null;t.steps=null}
   else{t.stepType=b.dataset.st;run.lastStepType=b.dataset.st;if(!isCounted(t.stepType))t.steps=null}
-  paintSteps();
+  paintSteps();saveDraft();
   if(isCounted(t.stepType))setTimeout(()=>{try{$("stepCount").focus()}catch(e){}},30);
 });
-$("stepCount").oninput=e=>{const t=stepsTarget();if(!t)return;const v=parseInt(e.target.value,10);t.steps=isNaN(v)?null:Math.max(0,v)};
-const bump=d=>{const t=stepsTarget();if(!t)return;t.steps=Math.max(0,(t.steps||0)+d);$("stepCount").value=t.steps};
+$("stepCount").oninput=e=>{const t=stepsTarget();if(!t)return;const v=parseInt(e.target.value,10);t.steps=isNaN(v)?null:Math.max(0,v);saveDraft()};
+const bump=d=>{const t=stepsTarget();if(!t)return;t.steps=Math.max(0,(t.steps||0)+d);$("stepCount").value=t.steps;saveDraft()};
 $("stepMinus").onclick=()=>bump(-5);$("stepPlus").onclick=()=>bump(5);
 $("pulseBeats").oninput=e=>{const v=parseInt(e.target.value,10);$("pulseErr").hidden=true;$("pulseCalc").textContent=isNaN(v)?"":"= "+(v*2)+" beats per minute"};
 $("endEarly").onclick=()=>{
@@ -916,18 +934,68 @@ $("endEarly").onclick=()=>{
     if(run.phase==="nsb")last.nsb=Math.round(elapsed());
   }
   if(canSpeak)try{speechSynthesis.cancel()}catch(e){}
-  if(run.results.length)finishSession();else{run=null;keepAwake(false);show("setup")}
+  if(run.results.length)finishSession();else{run=null;keepAwake(false);clearDraft();show("setup")}
 };
+
+/* ---------- Draft: keeps an unsaved session on this device ---------- */
+// Saved after every step, so a reload, a closed tab or a mis-tap never loses a session.
+const LS_DRAFT="buteyko-draft-v1";
+let finishedRun=null;
+const runCore=r=>({seq:r.seq,idx:r.idx,results:r.results,started:r.started,recovery:r.recovery,steps:r.steps,voice:r.voice,vsb:r.vsb,nsb:r.nsb,carry:r.carry||null});
+function doneInputs(){return{pulseStart:$("pulseStart").value,pulseEnd:$("pulseEnd").value,notes:$("notes").value}}
+function saveDraft(){
+  try{
+    if(run)save(LS_DRAFT,{kind:"run",savedAt:new Date().toISOString(),run:runCore(run)});
+    else if(pending&&finishedRun)save(LS_DRAFT,{kind:"done",savedAt:new Date().toISOString(),run:runCore(finishedRun),inputs:doneInputs()});
+  }catch(e){}
+}
+function clearDraft(){try{localStorage.removeItem(LS_DRAFT)}catch(e){}}
+function restoreRun(core){
+  return Object.assign({phase:"ready",t0:0,cp:null,spoken:0,lastBeep:-1,paused:false},JSON.parse(JSON.stringify(core)),{idx:core.results.length});
+}
+function checkDraft(){
+  const d=load(LS_DRAFT,null),panel=$("resumePanel");
+  const ok=d&&d.run&&!d.discarded&&Array.isArray(d.run.results)&&d.run.results.length&&(Date.now()-new Date(d.savedAt))<48*3600e3;
+  panel.hidden=!ok;if(!ok)return;
+  const r=d.run,holds=r.results.filter(x=>x.type!=="PULSE").length;
+  $("resumeText").textContent="Started "+fdate(r.started)+". "+r.results.length+" of "+r.seq.length+" steps done ("+holds+" hold"+(holds===1?"":"s")+"). It hasn't been saved to your history yet.";
+  $("resumeGo").textContent=r.results.length>=r.seq.length?"Review and save":"Carry on";
+  $("resumeGo").onclick=()=>{
+    run=restoreRun(r);if(d.inputs)run.carry=d.inputs;panel.hidden=true;
+    if(run.idx>=run.seq.length){finishSession();return}
+    keepAwake(true);show("run");renderRun();
+  };
+  $("resumeFinish").hidden=r.results.length>=r.seq.length;
+  $("resumeFinish").onclick=()=>{run=restoreRun(r);if(d.inputs)run.carry=d.inputs;panel.hidden=true;finishSession()};
+  $("resumeDrop").onclick=()=>{
+    const w=$("resumeBtns"),keep=w.innerHTML;
+    w.innerHTML='<span class="confirm">Throw this session away for good? <button class="ghost danger" id="rdYes">Discard</button><button class="ghost" id="rdNo">Keep it</button></span>';
+    $("rdYes").onclick=()=>{clearDraft();panel.hidden=true;w.innerHTML=keep;};
+    $("rdNo").onclick=()=>{w.innerHTML=keep;checkDraft()};
+  };
+}
+window.addEventListener("beforeunload",e=>{if(run||pending){saveDraft();e.preventDefault();e.returnValue=""}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveDraft()});
 
 /* ---------- Done ---------- */
 function finishSession(){
   pending={id:Date.now().toString(36),date:run.started,results:run.results.filter(r=>!(r.type==="PULSE"&&r.bpm==null)),planned:run.seq.slice()};
   doneAskSteps=run.steps;
+  const carry=run.carry;run.carry=null;
+  finishedRun=run;
   run=null;keepAwake(false);
-  $("pulseStart").value="";$("pulseEnd").value="";$("notes").value="";
+  $("pulseStart").value=carry?carry.pulseStart:"";$("pulseEnd").value=carry?carry.pulseEnd:"";$("notes").value=carry?carry.notes:"";
   $("manualPulse").hidden=pending.results.some(r=>r.type==="PULSE");
   resetDiscard();renderDone();renderDoneSteps();show("done");
+  saveDraft();
 }
+$("doneRedo").onclick=()=>{
+  if(!pending||!finishedRun)return;
+  run=finishedRun;run.carry=doneInputs();finishedRun=null;pending=null;
+  run.results.pop();run.idx=run.results.length;run.phase="ready";run.paused=false;
+  keepAwake(true);show("run");renderRun();
+};
+["pulseStart","pulseEnd","notes"].forEach(id=>$(id).addEventListener("input",saveDraft));
 let doneAskSteps=false;
 function stepsRowHtml(id,r){
   const st=r.stepType||"";
@@ -959,6 +1027,7 @@ function renderDone(){
   const s=stats(pending),sum={cp:s.avgCp==null?"-":s.avgCp.toFixed(0),mp:fmt(s.bestMp),rec:s.avgRec==null?"-":s.avgRec.toFixed(0),vsb:"",nsb:"",steps:""};
   h+='<tr><td></td><td><b>Average / best</b></td>'+cols.map(c=>'<td class="num '+c[2]+'">'+sum[c[0]]+'</td>').join("")+'</tr>';
   $("doneTable").innerHTML=h;
+  saveDraft();
 }
 $("saveSession").onclick=()=>{
   if(!pending)return;
@@ -966,7 +1035,7 @@ $("saveSession").onclick=()=>{
   pending.pulseStart=isNaN(ps)?null:ps;pending.pulseEnd=isNaN(pe)?null:pe;
   pending.notes=$("notes").value.trim();
   pending.results.forEach(r=>{delete r.stepsAnswered});
-  upsert(pending);pending=null;
+  upsert(pending);pending=null;finishedRun=null;clearDraft();
   toast(commit(true)?"Saved to history":"Saved for now, but this browser is blocking storage");
   show("history");
 };
@@ -974,10 +1043,25 @@ function resetDiscard(){$("discardWrap").innerHTML='<button class="ghost danger"
 function askDiscard(){
   const w=$("discardWrap");
   w.innerHTML='<span class="confirm">Discard this session? <button class="ghost danger" id="dYes">Yes, discard</button><button class="ghost" id="dNo">Keep it</button></span>';
-  $("dYes").onclick=()=>{pending=null;resetDiscard();show("setup")};
+  $("dYes").onclick=()=>{
+    const undo={pending,finishedRun,inputs:doneInputs(),doneAskSteps};
+    const d=load(LS_DRAFT,null);if(d){d.discarded=true;save(LS_DRAFT,d)}
+    pending=null;finishedRun=null;resetDiscard();show("setup");
+    showUndo(()=>{
+      pending=undo.pending;finishedRun=undo.finishedRun;doneAskSteps=undo.doneAskSteps;
+      $("pulseStart").value=undo.inputs.pulseStart;$("pulseEnd").value=undo.inputs.pulseEnd;$("notes").value=undo.inputs.notes;
+      resetDiscard();renderDone();renderDoneSteps();show("done");saveDraft();
+    });
+  };
   $("dNo").onclick=resetDiscard;
 }
 resetDiscard();
+let undoT=0;
+function showUndo(fn){
+  const bar=$("undoBar");bar.hidden=false;clearTimeout(undoT);
+  $("undoBtn").onclick=()=>{clearTimeout(undoT);bar.hidden=true;fn()};
+  undoT=setTimeout(()=>{bar.hidden=true;const d=load(LS_DRAFT,null);if(d&&d.discarded)clearDraft()},30000);
+}
 
 /* ---------- History ---------- */
 function stats(s){
@@ -986,9 +1070,23 @@ function stats(s){
   return{avgCp:avg(cps),bestMp:mps.length?Math.max(...mps):null,avgRec:avg(recs)};
 }
 function fdate(iso){const d=new Date(iso);return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})+", "+d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}
+let newSession=null;
+$("addManual").onclick=()=>{
+  const now=new Date();now.setSeconds(0,0);
+  newSession={id:Date.now().toString(36),date:now.toISOString(),results:[{type:"CPMP",cp:null,mp:null}],manual:true};
+  editingId=newSession.id;renderHistory();
+  setTimeout(()=>{const el=$("sessList").firstElementChild;if(el)el.scrollIntoView({behavior:"smooth",block:"start"})},30);
+};
 function renderHistory(){
   const list=$("sessList");
-  if(!log.length){
+  if(newSession&&(editingId!==newSession.id||log.some(x=>x.id===newSession.id)))newSession=null;
+  if(newSession){
+    list.innerHTML="";
+    const d=document.createElement("div");d.className="sess";renderEditor(d,newSession);
+    const head=d.querySelector(".top .date");if(head)head.textContent="Add a session by hand";
+    list.appendChild(d);
+    log.slice().reverse().forEach(s=>{const e=document.createElement("div");e.className="sess";renderSessView(e,s);list.appendChild(e)});
+  }else if(!log.length){
     list.innerHTML='<div class="emptystate">No sessions yet. Finish a session and press Save to see it here, with your CP and MP trend above.</div>';
   }else{
     list.innerHTML="";
@@ -1008,7 +1106,7 @@ function renderSessView(d,s){
   const pc=s.results.filter(r=>r.type==="PULSE"&&r.bpm!=null).map(r=>r.bpm);
   if(pc.length)meta.push("Pulse "+pc.join(", ")+" bpm");
   else if(s.pulseStart||s.pulseEnd)meta.push("Pulse "+(s.pulseStart||"-")+" to "+(s.pulseEnd||"-"));
-  d.innerHTML='<div class="top"><span class="date">'+fdate(s.date)+(s.edited?' <span class="meta">(edited)</span>':'')+'</span><span class="meta">'+meta.join(" | ")+'</span></div><div class="holds">'+holds+'</div>'+(s.notes?'<div class="note"></div>':'')+'<div class="acts"><button class="linkbtn" data-a="edit">Edit</button><button class="linkbtn" data-a="del">Delete</button></div>';
+  d.innerHTML='<div class="top"><span class="date">'+fdate(s.date)+(s.manual?' <span class="meta">(added by hand)</span>':s.edited?' <span class="meta">(edited)</span>':'')+'</span><span class="meta">'+meta.join(" | ")+'</span></div><div class="holds">'+holds+'</div>'+(s.notes?'<div class="note"></div>':'')+'<div class="acts"><button class="linkbtn" data-a="edit">Edit</button><button class="linkbtn" data-a="del">Delete</button></div>';
   if(s.notes)d.querySelector(".note").textContent=s.notes;
   const acts=d.querySelector(".acts");
   acts.querySelector('[data-a="edit"]').onclick=()=>{editingId=s.id;renderHistory()};
@@ -1500,6 +1598,7 @@ if("serviceWorker" in navigator&&location.protocol.startsWith("http")){
 }
 
 drawScale(0,null);
+checkDraft();
 })();
 </script>
 
